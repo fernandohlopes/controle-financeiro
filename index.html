@@ -203,6 +203,44 @@ tbody tr:last-child td{border-bottom:none}
       <div class="auth-field" id="auth-nome-field" style="display:none"><label>Nome</label><input type="text" id="auth-nome" placeholder="Seu nome completo"></div>
       <div class="auth-err" id="auth-err"></div>
       <button class="btn-auth" id="btn-auth" onclick="submitAuth()">Entrar</button>
+      <div id="link-esqueceu" style="text-align:center;margin-top:16px">
+        <a href="#" onclick="mostrarEsqueceuSenha()" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3);text-decoration:none;letter-spacing:0.06em">Esqueceu a senha?</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nova Senha (recuperação via link do e-mail) -->
+<div id="modal-nova-senha" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-title">Criar Nova Senha</div>
+    <div class="modal-sub">Digite sua nova senha abaixo</div>
+    <div class="modal-field">
+      <label>Nova Senha</label>
+      <input type="password" id="nova-senha-input" class="modal-input" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="modal-field">
+      <label>Confirmar Senha</label>
+      <input type="password" id="nova-senha-confirm" class="modal-input" placeholder="Repita a senha">
+    </div>
+    <div id="nova-senha-err" style="font-family:var(--mono);font-size:0.68rem;color:var(--red);margin-bottom:12px;min-height:18px"></div>
+    <button class="btn-auth" onclick="salvarNovaSenha()">Salvar Nova Senha</button>
+  </div>
+</div>
+
+<!-- Modal Esqueceu Senha -->
+<div id="modal-esqueceu" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-title">Recuperar Senha</div>
+    <div class="modal-sub">Enviaremos um link para seu e-mail</div>
+    <div class="modal-field">
+      <label>E-mail</label>
+      <input type="email" id="esqueceu-email" class="modal-input" placeholder="seu@email.com">
+    </div>
+    <div id="esqueceu-err" style="font-family:var(--mono);font-size:0.68rem;margin-bottom:12px;min-height:18px"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-auth" style="flex:1" onclick="enviarRecuperacao()">Enviar Link</button>
+      <button class="btn-auth" style="flex:1;background:var(--surface);color:var(--text3);border:1px solid var(--border)" onclick="fecharEsqueceu()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -414,6 +452,29 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
   <div class="card">
+    <div class="card-label">Segurança</div>
+    <div style="margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:0.72rem;color:var(--text2);margin-bottom:12px">Altere sua senha de acesso ao aplicativo.</div>
+      <div class="settings-add-row" style="flex-direction:column;gap:10px">
+        <div class="modal-field" style="margin:0">
+          <label style="font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono)">Senha Atual</label>
+          <input type="password" id="senha-atual" class="modal-input" placeholder="••••••••">
+        </div>
+        <div class="modal-field" style="margin:0">
+          <label style="font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono)">Nova Senha</label>
+          <input type="password" id="senha-nova" class="modal-input" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="modal-field" style="margin:0">
+          <label style="font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono)">Confirmar Nova Senha</label>
+          <input type="password" id="senha-nova-confirm" class="modal-input" placeholder="Repita a nova senha">
+        </div>
+        <div id="senha-err" style="font-family:var(--mono);font-size:0.68rem;color:var(--red);min-height:16px"></div>
+        <button class="settings-add-btn" onclick="trocarSenha()" style="align-self:flex-start">Alterar Senha</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-label">Zona de Perigo</div>
     <button class="btn-danger" onclick="limparDados()">Apagar todos os meus dados</button>
   </div>
@@ -425,7 +486,14 @@ tbody tr:last-child td{border-bottom:none}
 const SUPA_URL='https://lmocqxeabenncfkktcoc.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtb2NxeGVhYmVubmNma2t0Y29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjk3OTMsImV4cCI6MjA5NTMwNTc5M30.8FFzVG6rIV4fBzZWE47OZyAhEhJxgvEB6K2kjiQWxzg';
 const {createClient}=supabase;
-const sb=createClient(SUPA_URL,SUPA_KEY);
+const sb=createClient(SUPA_URL,SUPA_KEY,{
+  auth:{
+    persistSession:true,
+    storageKey:'cf_session_lmocqxea',
+    autoRefreshToken:true,
+    detectSessionInUrl:false
+  }
+});
 
 const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let bancoDados=[],receitasDB={},itensPreparo=[];
@@ -480,6 +548,84 @@ const fmt=v=>(parseFloat(v)||0).toLocaleString('pt-BR',{style:'currency',currenc
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad2=n=>String(n).padStart(2,'0');
 
+// ── RECUPERAÇÃO DE SENHA ──
+function mostrarEsqueceuSenha(){
+  document.getElementById('esqueceu-email').value=document.getElementById('auth-email').value||'';
+  document.getElementById('esqueceu-err').textContent='';
+  document.getElementById('modal-esqueceu').classList.add('open');
+  return false;
+}
+
+function fecharEsqueceu(){
+  document.getElementById('modal-esqueceu').classList.remove('open');
+}
+
+async function enviarRecuperacao(){
+  const email=document.getElementById('esqueceu-email').value.trim();
+  const errEl=document.getElementById('esqueceu-err');
+  if(!email){errEl.style.color='var(--red)';errEl.textContent='Informe o e-mail.';return;}
+  errEl.textContent='Enviando...';errEl.style.color='var(--text3)';
+  try{
+    const{error}=await sb.auth.resetPasswordForEmail(email,{
+      redirectTo:'https://controle-financeiro-nine-blue.vercel.app'
+    });
+    if(error)throw error;
+    errEl.style.color='var(--green)';
+    errEl.textContent='Link enviado! Verifique seu e-mail.';
+    setTimeout(()=>fecharEsqueceu(),3000);
+  }catch(e){
+    errEl.style.color='var(--red)';
+    errEl.textContent='Erro: '+e.message;
+  }
+}
+
+async function salvarNovaSenha(){
+  const nova=document.getElementById('nova-senha-input').value;
+  const confirm=document.getElementById('nova-senha-confirm').value;
+  const errEl=document.getElementById('nova-senha-err');
+  if(nova.length<6){errEl.textContent='Senha precisa ter pelo menos 6 caracteres.';return;}
+  if(nova!==confirm){errEl.textContent='As senhas não coincidem.';return;}
+  errEl.textContent='Salvando...';
+  try{
+    const{error}=await sb.auth.updateUser({password:nova});
+    if(error)throw error;
+    document.getElementById('modal-nova-senha').classList.remove('open');
+    toast('Senha alterada com sucesso!','success');
+  }catch(e){
+    errEl.textContent='Erro: '+e.message;
+  }
+}
+
+async function trocarSenha(){
+  const atual=document.getElementById('senha-atual').value;
+  const nova=document.getElementById('senha-nova').value;
+  const confirm=document.getElementById('senha-nova-confirm').value;
+  const errEl=document.getElementById('senha-err');
+  errEl.textContent='';
+  if(!atual){errEl.textContent='Informe a senha atual.';return;}
+  if(nova.length<6){errEl.textContent='Nova senha precisa ter pelo menos 6 caracteres.';return;}
+  if(nova!==confirm){errEl.textContent='As senhas não coincidem.';return;}
+  // Verifica senha atual fazendo login
+  errEl.style.color='var(--text3)';errEl.textContent='Verificando...';
+  try{
+    const{error:loginErr}=await sb.auth.signInWithPassword({
+      email:usuarioAtual.email,password:atual
+    });
+    if(loginErr)throw new Error('Senha atual incorreta.');
+    const{error}=await sb.auth.updateUser({password:nova});
+    if(error)throw error;
+    document.getElementById('senha-atual').value='';
+    document.getElementById('senha-nova').value='';
+    document.getElementById('senha-nova-confirm').value='';
+    errEl.style.color='var(--green)';
+    errEl.textContent='Senha alterada com sucesso!';
+    setTimeout(()=>{errEl.textContent='';},3000);
+  }catch(e){
+    errEl.style.color='var(--red)';
+    errEl.textContent=e.message;
+  }
+}
+
 let syncTimer=null;
 function setSyncStatus(s){
   const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');
@@ -509,6 +655,7 @@ function trocarAba(aba,btn){
   document.getElementById('auth-nome-field').style.display=aba==='cadastro'?'flex':'none';
   document.getElementById('btn-auth').textContent=aba==='cadastro'?'Criar Conta':'Entrar';
   document.getElementById('auth-err').textContent='';
+  document.getElementById('link-esqueceu').style.display=aba==='cadastro'?'none':'block';
 }
 
 async function submitAuth(){
@@ -1152,13 +1299,26 @@ document.getElementById('modal-receita').addEventListener('click',function(e){if
 popularSelectsAno();
 
 sb.auth.onAuthStateChange(async(event,session)=>{
+  // Captura evento de recuperação de senha (usuário clicou no link do e-mail)
+  if(event==='PASSWORD_RECOVERY'){
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('modal-nova-senha').classList.add('open');
+    document.getElementById('nova-senha-input').value='';
+    document.getElementById('nova-senha-confirm').value='';
+    document.getElementById('nova-senha-err').textContent='';
+    return;
+  }
+  // Ignora eventos de refresh de token para não recarregar dados desnecessariamente
+  if(event==='TOKEN_REFRESHED') return;
   if(session?.user){
+    // Só carrega dados se for um novo login ou primeiro carregamento
+    const isNewLogin = !usuarioAtual || usuarioAtual.id!==session.user.id;
     usuarioAtual=session.user;
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('app').style.display='block';
     document.getElementById('nav-email').textContent=usuarioAtual.email;
     document.getElementById('settings-email').textContent=usuarioAtual.email;
-    await carregarTudo();
+    if(isNewLogin) await carregarTudo();
   }else{
     usuarioAtual=null;
     document.getElementById('auth-loading').style.display='none';
@@ -1170,23 +1330,12 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   document.getElementById('auth-loading').style.display='block';
   document.getElementById('auth-form').style.display='none';
   try{
-    // Remove chaves de sessão de projetos antigos do Supabase
-    // Mantém apenas chaves do projeto atual (lmocqxeabenncfkktcoc)
-    const PROJECT_ID='lmocqxeabenncfkktcoc';
-    const toRemove=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&(k.startsWith('sb-')||k.includes('supabase'))&&!k.includes(PROJECT_ID)){
-        toRemove.push(k);
-      }
-    }
-    toRemove.forEach(k=>localStorage.removeItem(k));
-
-    const{data:{session}}=await sb.auth.getSession();
-    if(!session){
+    const{data:{session},error}=await sb.auth.getSession();
+    if(error||!session){
       document.getElementById('auth-loading').style.display='none';
       document.getElementById('auth-form').style.display='block';
     }
+    // Se há sessão, onAuthStateChange vai cuidar do resto
   }catch(e){
     document.getElementById('auth-loading').style.display='none';
     document.getElementById('auth-form').style.display='block';
