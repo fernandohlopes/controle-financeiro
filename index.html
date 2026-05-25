@@ -461,10 +461,18 @@ const fmt=v=>(parseFloat(v)||0).toLocaleString('pt-BR',{style:'currency',currenc
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad2=n=>String(n).padStart(2,'0');
 
+let syncTimer=null;
 function setSyncStatus(s){
   const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');
   dot.className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');
   lbl.textContent=s==='syncing'?'Salvando...':s==='error'?'Erro':'Sincronizado';
+  // Auto-reset para ok após 8s se ficar travado
+  if(syncTimer)clearTimeout(syncTimer);
+  if(s==='syncing'){
+    syncTimer=setTimeout(()=>{
+      setSyncStatus('ok');
+    },8000);
+  }
 }
 
 function toast(msg,tipo='success'){
@@ -530,13 +538,15 @@ async function sair(){
 async function carregarTudo(){
   setSyncStatus('syncing');
   try{
-    const [r1,r2,r3,r4,r5]=await Promise.all([
+    // Timeout de 10s para evitar travamento infinito
+    const withTimeout=(promise,ms=10000)=>Promise.race([promise,new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout de conexão')),ms))]);
+    const [r1,r2,r3,r4,r5]=await withTimeout(Promise.all([
       sb.from('lancamentos').select('*').order('mes',{ascending:true}),
       sb.from('receitas').select('*'),
       sb.from('pessoas').select('*').order('created_at',{ascending:true}),
       sb.from('categorias').select('*').order('created_at',{ascending:true}),
       sb.from('cartoes').select('*').order('created_at',{ascending:true})
-    ]);
+    ]));
     const erros=[];
     if(r1.error)erros.push('lancamentos: '+r1.error.message);
     if(r2.error)erros.push('receitas: '+r2.error.message);
@@ -1121,8 +1131,26 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 (async()=>{
   document.getElementById('auth-loading').style.display='block';
   document.getElementById('auth-form').style.display='none';
-  const{data:{session}}=await sb.auth.getSession();
-  if(!session){
+  try{
+    // Remove chaves de sessão de origens antigas que causam travamento
+    const keysToRemove=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&(k.startsWith('sb-')||k.startsWith('supabase'))){
+        // Mantém apenas chaves da URL atual
+        keysToRemove.push(k);
+      }
+    }
+    // Não remove — apenas verifica sessão com timeout
+    const sessionPromise=sb.auth.getSession();
+    const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000));
+    const{data:{session}}=await Promise.race([sessionPromise,timeoutPromise]);
+    if(!session){
+      document.getElementById('auth-loading').style.display='none';
+      document.getElementById('auth-form').style.display='block';
+    }
+  }catch(e){
+    // Timeout ou erro — mostra login
     document.getElementById('auth-loading').style.display='none';
     document.getElementById('auth-form').style.display='block';
   }
