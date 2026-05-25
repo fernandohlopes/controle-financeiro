@@ -418,8 +418,8 @@ tbody tr:last-child td{border-bottom:none}
 </div></div>
 
 <script>
-const SUPA_URL='https://kbgupdpjhigqxvuhmpnx.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiZ3VwZHBqaGlncXh2dWhtcG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDY5MTgsImV4cCI6MjA5NDg4MjkxOH0.0EGAIfEdwTZmtfYWAf_srGd2pGz4alF6R2DcsSB7ZxQ';
+const SUPA_URL='https://lmocqxeabenncfkktcoc.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtb2NxeGVhYmVubmNma2t0Y29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjk3OTMsImV4cCI6MjA5NTMwNTc5M30.8FFzVG6rIV4fBzZWE47OZyAhEhJxgvEB6K2kjiQWxzg';
 const {createClient}=supabase;
 const sb=createClient(SUPA_URL,SUPA_KEY);
 
@@ -471,7 +471,7 @@ function setSyncStatus(s){
   if(s==='syncing'){
     syncTimer=setTimeout(()=>{
       setSyncStatus('ok');
-    },8000);
+    },30000);
   }
 }
 
@@ -538,22 +538,19 @@ async function sair(){
 async function carregarTudo(){
   setSyncStatus('syncing');
   try{
-    // Timeout de 10s para evitar travamento infinito
-    const withTimeout=(promise,ms=10000)=>Promise.race([promise,new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout de conexão')),ms))]);
-    const [r1,r2,r3,r4,r5]=await withTimeout(Promise.all([
-      sb.from('lancamentos').select('*').order('mes',{ascending:true}),
-      sb.from('receitas').select('*'),
-      sb.from('pessoas').select('*').order('created_at',{ascending:true}),
-      sb.from('categorias').select('*').order('created_at',{ascending:true}),
-      sb.from('cartoes').select('*').order('created_at',{ascending:true})
-    ]));
+    // Carrega em sequência para evitar sobrecarga e timeout
+    const r1=await sb.from('lancamentos').select('*').order('mes',{ascending:true});
+    const r2=await sb.from('receitas').select('*');
+    const r3=await sb.from('pessoas').select('*').order('created_at',{ascending:true});
+    const r4=await sb.from('categorias').select('*').order('created_at',{ascending:true});
+    const r5=await sb.from('cartoes').select('*').order('created_at',{ascending:true});
     const erros=[];
     if(r1.error)erros.push('lancamentos: '+r1.error.message);
     if(r2.error)erros.push('receitas: '+r2.error.message);
     if(r3.error)erros.push('pessoas: '+r3.error.message);
     if(r4.error)erros.push('categorias: '+r4.error.message);
     if(r5.error)erros.push('cartoes: '+r5.error.message);
-    if(erros.length){setSyncStatus('error');alert('Erro ao carregar:\n'+erros.join(',\n'));return;}
+    if(erros.length){setSyncStatus('error');toast('Erro: '+erros.join(', '),'error');return;}
     bancoDados=(r1.data||[]).map(mapFromDB);
     receitasDB={};
     (r2.data||[]).forEach(r=>{receitasDB[bancoParaChave(r.mes)]=r.valor;});
@@ -568,7 +565,7 @@ async function carregarTudo(){
     if(document.getElementById('extrato').classList.contains('active'))atualizarExtrato();
   }catch(e){
     setSyncStatus('error');
-    alert('Erro inesperado: '+e.message+'\n\nStack: '+e.stack);
+    toast('Erro de conexão: '+e.message,'error');
   }
 }
 
