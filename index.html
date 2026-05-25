@@ -92,7 +92,11 @@ nav{background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px 
 .checkbox-group{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
 .checkbox-item{display:flex;align-items:center;gap:10px;font-size:0.78rem;color:var(--text2);font-family:var(--mono);cursor:pointer;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);transition:all 0.15s;background:var(--card)}
 .checkbox-item:hover{border-color:var(--border2);color:var(--text)}
-.checkbox-item input[type="checkbox"]{accent-color:var(--gold);width:14px;height:14px}
+.checkbox-item input[type="checkbox"]{display:none}
+.checkbox-item{position:relative;user-select:none}
+.checkbox-item::before{content:'';width:20px;height:20px;border:2px solid var(--border2);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;background:var(--surface)}
+.checkbox-item.checked{border-color:var(--gold);background:var(--gold-dim);color:var(--gold)}
+.checkbox-item.checked::before{content:'✓';background:var(--gold);border-color:var(--gold);color:#0a0a0a;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
 .btn{font-family:var(--mono);font-size:0.73rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;border:none;border-radius:var(--radius);padding:13px 24px;cursor:pointer;transition:all 0.2s}
 .btn-primary{background:var(--gold);color:#0a0a0a}
 .btn-primary:hover{background:var(--gold2);transform:translateY(-1px);box-shadow:0 4px 24px rgba(201,168,76,0.25)}
@@ -430,13 +434,28 @@ let listaPessoas=[],listaCategorias=[],listaCartoes=[];
 
 // ── DATAS ──
 // Banco usa 'YYYY-MM-DD'. Sempre gravamos dia 01.
-function dateParaBanco(mes,ano){return `${ano}-${String(mes).padStart(2,'0')}-01`;}
+function dateParaBanco(mes,ano){
+  // Ensure mes is a number and properly padded
+  const m=parseInt(mes);
+  const a=parseInt(ano);
+  if(isNaN(m)||isNaN(a)||m<1||m>12)return null;
+  return `${a}-${String(m).padStart(2,'0')}-01`;
+}
 function bancoParaExib(dateStr){
   if(!dateStr)return'—';
-  const [ano,,mesStr]=dateStr.split('-');
-  return `${MESES_NOME[parseInt(mesStr)-1]}/${ano}`;
+  // Handle both '2026-01-01' and '2026-01-01T00:00:00+00:00'
+  const clean=dateStr.substring(0,10);
+  const parts=clean.split('-');
+  if(parts.length<2)return dateStr;
+  const ano=parts[0];
+  const mesIdx=parseInt(parts[1])-1;
+  return `${MESES_NOME[mesIdx]}/${ano}`;
 }
-function bancoParaChave(dateStr){return dateStr?dateStr.substring(0,7):'';}// 'YYYY-MM'
+function bancoParaChave(dateStr){
+  if(!dateStr)return'';
+  // Handle both '2026-01-01' and '2026-01-01T00:00:00+00:00'
+  return dateStr.substring(0,7);
+}
 function hoje(){const d=new Date();return{mes:d.getMonth()+1,ano:d.getFullYear()};}
 
 function proximoMesDate(mes,ano,offset){
@@ -594,7 +613,7 @@ function popularSelects(){
   listaPessoas.forEach(p=>selResp.innerHTML+=`<option value="${esc(p.nome)}"${p.nome===val?' selected':''}>${esc(p.nome)}</option>`);
 
   const divEl=document.getElementById('divisao-checkboxes');
-  divEl.innerHTML=listaPessoas.map(p=>`<label class="checkbox-item"><input type="checkbox" name="pessoa" value="${esc(p.nome)}"> ${esc(p.nome)}</label>`).join('');
+  divEl.innerHTML=listaPessoas.map(p=>`<div class="checkbox-item" onclick="togglePessoa(this,'${esc(p.nome)}')" data-nome="${esc(p.nome)}">${esc(p.nome)}</div>`).join('');
 
   const selCartao=document.getElementById('cartao');
   const valC=selCartao.value;
@@ -835,6 +854,13 @@ function atualizarPreviewParcelas(){
     }).join('');
 }
 
+function togglePessoa(el, nome){
+  el.classList.toggle('checked');
+  if(document.getElementById('erro-divisao').style.display==='block'&&
+     document.querySelectorAll('#divisao-checkboxes .checkbox-item.checked').length)
+    document.getElementById('erro-divisao').style.display='none';
+}
+
 function alternarUsoCartao(){
   const usa=document.getElementById('usa_cartao').value==='sim';
   const fieldCartao=document.getElementById('field-cartao');
@@ -848,7 +874,7 @@ function alternarModoDivisao(){
   const isDiv=document.getElementById('is_dividida').value==='sim';
   document.getElementById('field-responsavel').style.display=isDiv?'none':'flex';
   document.getElementById('area_divisao').style.display=isDiv?'block':'none';
-  if(!isDiv)document.querySelectorAll('input[name="pessoa"]').forEach(c=>c.checked=false);
+  if(!isDiv)document.querySelectorAll('#divisao-checkboxes .checkbox-item').forEach(c=>c.classList.remove('checked'));
 }
 
 function setError(id){const el=document.getElementById(id);if(el){el.classList.add('error');el.closest('.field')?.classList.add('has-error');}}
@@ -869,7 +895,7 @@ function validarForm(){
   if(!mes||!ano){const f=document.getElementById('mes_referencia').closest('.field');if(f)f.classList.add('has-error');document.getElementById('err-mes').style.display='block';ok=false;}
   else document.getElementById('err-mes').style.display='none';
   if(isDiv){
-    if(!document.querySelectorAll('input[name="pessoa"]:checked').length){document.getElementById('erro-divisao').style.display='block';ok=false;}
+    if(!document.querySelectorAll('.checkbox-item.checked').length){document.getElementById('erro-divisao').style.display='block';ok=false;}
     else document.getElementById('erro-divisao').style.display='none';
   }else{
     if(!document.getElementById('responsavel_unico').value){setError('responsavel_unico');ok=false;}
@@ -887,7 +913,7 @@ function resetFormulario(){
   document.getElementById('cartao').disabled=false;
   document.getElementById('area_divisao').style.display='none';
   document.getElementById('parcelas-preview').style.display='none';
-  document.querySelectorAll('input[name="pessoa"]').forEach(c=>c.checked=false);
+  document.querySelectorAll('#divisao-checkboxes .checkbox-item').forEach(c=>c.classList.remove('checked'));
   clearErrors();
 }
 
@@ -919,7 +945,7 @@ function prepararLancamento(){
   const grupoId=Math.random().toString(36).slice(2,10).toUpperCase();
 
   if(isDiv){
-    const sels=Array.from(document.querySelectorAll('input[name="pessoa"]:checked')).map(c=>c.value);
+    const sels=Array.from(document.querySelectorAll('.checkbox-item.checked')).map(c=>c.dataset.nome);
     sels.forEach(nome=>{
       gerarItensParcelas(desc+' (Div.)',mes,ano,valor/sels.length,nome,cartao,cat,par,grupoId+'_'+nome.slice(0,3).toUpperCase())
         .forEach(it=>itensPreparo.push(it));
