@@ -542,8 +542,21 @@ async function submitAuth(){
 }
 
 async function sair(){
-  await sb.auth.signOut();
+  try{
+    // Limpa todos os dados de sessão do localStorage
+    const PROJECT_ID='lmocqxeabenncfkktcoc';
+    const toRemove=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&(k.includes('sb-')||k.includes('supabase')||k.includes(PROJECT_ID))){
+        toRemove.push(k);
+      }
+    }
+    toRemove.forEach(k=>localStorage.removeItem(k));
+    await sb.auth.signOut();
+  }catch(e){}
   bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
+  usuarioAtual=null;
   document.getElementById('app').style.display='none';
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('auth-email').value='';
@@ -551,6 +564,8 @@ async function sair(){
   document.getElementById('auth-err').textContent='';
   document.getElementById('btn-auth').disabled=false;
   document.getElementById('btn-auth').textContent='Entrar';
+  // Recarrega a página para garantir estado limpo
+  setTimeout(()=>location.reload(),300);
 }
 
 // ── CARREGAR DADOS ──
@@ -1155,25 +1170,24 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   document.getElementById('auth-loading').style.display='block';
   document.getElementById('auth-form').style.display='none';
   try{
-    // Remove chaves de sessão de origens antigas que causam travamento
-    const keysToRemove=[];
+    // Remove chaves de sessão de projetos antigos do Supabase
+    // Mantém apenas chaves do projeto atual (lmocqxeabenncfkktcoc)
+    const PROJECT_ID='lmocqxeabenncfkktcoc';
+    const toRemove=[];
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i);
-      if(k&&(k.startsWith('sb-')||k.startsWith('supabase'))){
-        // Mantém apenas chaves da URL atual
-        keysToRemove.push(k);
+      if(k&&(k.startsWith('sb-')||k.includes('supabase'))&&!k.includes(PROJECT_ID)){
+        toRemove.push(k);
       }
     }
-    // Não remove — apenas verifica sessão com timeout
-    const sessionPromise=sb.auth.getSession();
-    const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000));
-    const{data:{session}}=await Promise.race([sessionPromise,timeoutPromise]);
+    toRemove.forEach(k=>localStorage.removeItem(k));
+
+    const{data:{session}}=await sb.auth.getSession();
     if(!session){
       document.getElementById('auth-loading').style.display='none';
       document.getElementById('auth-form').style.display='block';
     }
   }catch(e){
-    // Timeout ou erro — mostra login
     document.getElementById('auth-loading').style.display='none';
     document.getElementById('auth-form').style.display='block';
   }
