@@ -1299,7 +1299,7 @@ document.getElementById('modal-receita').addEventListener('click',function(e){if
 popularSelectsAno();
 
 sb.auth.onAuthStateChange(async(event,session)=>{
-  // Captura evento de recuperação de senha (usuário clicou no link do e-mail)
+  // Recuperação de senha
   if(event==='PASSWORD_RECOVERY'){
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('modal-nova-senha').classList.add('open');
@@ -1308,17 +1308,18 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('nova-senha-err').textContent='';
     return;
   }
-  // Ignora eventos de refresh de token para não recarregar dados desnecessariamente
-  if(event==='TOKEN_REFRESHED') return;
+  // Ignora refresh de token
+  if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED') return;
   if(session?.user){
-    // Só carrega dados se for um novo login ou primeiro carregamento
-    const isNewLogin = !usuarioAtual || usuarioAtual.id!==session.user.id;
     usuarioAtual=session.user;
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('app').style.display='block';
     document.getElementById('nav-email').textContent=usuarioAtual.email;
     document.getElementById('settings-email').textContent=usuarioAtual.email;
-    if(isNewLogin) await carregarTudo();
+    // Só carrega dados na inicialização (INITIAL_SESSION) ou novo login (SIGNED_IN)
+    if(event==='SIGNED_IN'||event==='INITIAL_SESSION'){
+      await carregarTudo();
+    }
   }else{
     usuarioAtual=null;
     document.getElementById('auth-loading').style.display='none';
@@ -1326,21 +1327,16 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }
 });
 
-(async()=>{
-  document.getElementById('auth-loading').style.display='block';
-  document.getElementById('auth-form').style.display='none';
-  try{
-    const{data:{session},error}=await sb.auth.getSession();
-    if(error||!session){
-      document.getElementById('auth-loading').style.display='none';
-      document.getElementById('auth-form').style.display='block';
-    }
-    // Se há sessão, onAuthStateChange vai cuidar do resto
-  }catch(e){
+// Mostra loading até onAuthStateChange responder
+document.getElementById('auth-loading').style.display='block';
+document.getElementById('auth-form').style.display='none';
+// Safety timeout — se não responder em 6s, mostra login
+setTimeout(()=>{
+  if(!usuarioAtual){
     document.getElementById('auth-loading').style.display='none';
     document.getElementById('auth-form').style.display='block';
   }
-})();
+},6000);
 </script>
 </body>
 </html>
