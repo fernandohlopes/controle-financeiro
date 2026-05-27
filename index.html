@@ -498,7 +498,7 @@ const sb=createClient(SUPA_URL,SUPA_KEY,{
 
 const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let bancoDados=[],receitasDB={},itensPreparo=[];
-let dadosCarregados=false;
+// dadosCarregados gerenciado via sessionStorage para sobreviver ao F5
 let editandoId=null,filtroMesUsuario=null,usuarioAtual=null;
 let listaPessoas=[],listaCategorias=[],listaCartoes=[];
 
@@ -705,8 +705,8 @@ async function sair(){
     await sb.auth.signOut();
   }catch(e){}
   bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
+  if(usuarioAtual)sessionStorage.removeItem('cf_loaded_'+usuarioAtual.id);
   usuarioAtual=null;
-  dadosCarregados=false;
   document.getElementById('app').style.display='none';
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('auth-email').value='';
@@ -1329,9 +1329,17 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('settings-email').textContent=usuarioAtual.email;
     // INITIAL_SESSION = primeiro carregamento com sessão existente (F5, abrir aba)
     // SIGNED_IN disparado em F5 também — só carrega se não tinha usuário antes
-    if(event==='INITIAL_SESSION'||(event==='SIGNED_IN'&&!dadosCarregados)){
-      dadosCarregados=true;
+    // Usa sessionStorage para evitar recarregamento duplo no F5
+    const jaCarregou=sessionStorage.getItem('cf_loaded_'+session.user.id);
+    if(!jaCarregou){
+      sessionStorage.setItem('cf_loaded_'+session.user.id,'1');
       await carregarTudo();
+    } else {
+      // Dados já carregados — só atualiza UI sem buscar no banco
+      atualizarDashboard();
+      popularFiltroMeses();
+      popularSelects();
+      renderAjustes();
     }
   }else{
     usuarioAtual=null;
