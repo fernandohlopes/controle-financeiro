@@ -498,6 +498,7 @@ const sb=createClient(SUPA_URL,SUPA_KEY,{
 
 const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let bancoDados=[],receitasDB={},itensPreparo=[];
+let dadosCarregados=false;
 let editandoId=null,filtroMesUsuario=null,usuarioAtual=null;
 let listaPessoas=[],listaCategorias=[],listaCartoes=[];
 
@@ -705,6 +706,7 @@ async function sair(){
   }catch(e){}
   bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
   usuarioAtual=null;
+  dadosCarregados=false;
   document.getElementById('app').style.display='none';
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('auth-email').value='';
@@ -720,19 +722,21 @@ async function sair(){
 async function carregarTudo(){
   setSyncStatus('syncing');
   try{
-    // Carrega em sequência para evitar sobrecarga e timeout
     const r1=await sb.from('lancamentos').select('*').order('mes',{ascending:true});
+    if(r1.error){setSyncStatus('error');toast('Erro lancamentos: '+r1.error.message,'error');return;}
+    
     const r2=await sb.from('receitas').select('*');
+    if(r2.error){setSyncStatus('error');toast('Erro receitas: '+r2.error.message,'error');return;}
+    
     const r3=await sb.from('pessoas').select('*').order('created_at',{ascending:true});
+    if(r3.error){setSyncStatus('error');toast('Erro pessoas: '+r3.error.message,'error');return;}
+    
     const r4=await sb.from('categorias').select('*').order('created_at',{ascending:true});
+    if(r4.error){setSyncStatus('error');toast('Erro categorias: '+r4.error.message,'error');return;}
+    
     const r5=await sb.from('cartoes').select('*').order('created_at',{ascending:true});
-    const erros=[];
-    if(r1.error)erros.push('lancamentos: '+r1.error.message);
-    if(r2.error)erros.push('receitas: '+r2.error.message);
-    if(r3.error)erros.push('pessoas: '+r3.error.message);
-    if(r4.error)erros.push('categorias: '+r4.error.message);
-    if(r5.error)erros.push('cartoes: '+r5.error.message);
-    if(erros.length){setSyncStatus('error');toast('Erro: '+erros.join(', '),'error');return;}
+    if(r5.error){setSyncStatus('error');toast('Erro cartoes: '+r5.error.message,'error');return;}
+
     bancoDados=(r1.data||[]).map(mapFromDB);
     receitasDB={};
     (r2.data||[]).forEach(r=>{receitasDB[bancoParaChave(r.mes)]=r.valor;});
@@ -747,7 +751,7 @@ async function carregarTudo(){
     if(document.getElementById('extrato').classList.contains('active'))atualizarExtrato();
   }catch(e){
     setSyncStatus('error');
-    toast('Erro de conexão: '+e.message,'error');
+    toast('Erro: '+e.message,'error');
   }
 }
 
@@ -1323,8 +1327,10 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('app').style.display='block';
     document.getElementById('nav-email').textContent=usuarioAtual.email;
     document.getElementById('settings-email').textContent=usuarioAtual.email;
-    // Só carrega dados na inicialização (INITIAL_SESSION) ou novo login (SIGNED_IN)
-    if(event==='SIGNED_IN'||event==='INITIAL_SESSION'){
+    // INITIAL_SESSION = primeiro carregamento com sessão existente (F5, abrir aba)
+    // SIGNED_IN disparado em F5 também — só carrega se não tinha usuário antes
+    if(event==='INITIAL_SESSION'||(event==='SIGNED_IN'&&!dadosCarregados)){
+      dadosCarregados=true;
       await carregarTudo();
     }
   }else{
