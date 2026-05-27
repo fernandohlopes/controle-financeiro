@@ -719,24 +719,25 @@ async function sair(){
 }
 
 // ── CARREGAR DADOS ──
-async function carregarTudo(silencioso=false){
-  if(!silencioso)setSyncStatus('syncing');
+async function carregarTudo(){
+  setSyncStatus('syncing');
   try{
     const r1=await sb.from('lancamentos').select('*').order('mes',{ascending:true});
-    if(r1.error){setSyncStatus('error');toast('Erro lancamentos: '+r1.error.message,'error');return;}
-    
     const r2=await sb.from('receitas').select('*');
-    if(r2.error){setSyncStatus('error');toast('Erro receitas: '+r2.error.message,'error');return;}
-    
     const r3=await sb.from('pessoas').select('*').order('created_at',{ascending:true});
-    if(r3.error){setSyncStatus('error');toast('Erro pessoas: '+r3.error.message,'error');return;}
-    
     const r4=await sb.from('categorias').select('*').order('created_at',{ascending:true});
-    if(r4.error){setSyncStatus('error');toast('Erro categorias: '+r4.error.message,'error');return;}
-    
     const r5=await sb.from('cartoes').select('*').order('created_at',{ascending:true});
-    if(r5.error){setSyncStatus('error');toast('Erro cartoes: '+r5.error.message,'error');return;}
 
+    // Só atualiza dados se TODAS as queries tiveram sucesso
+    // Evita apagar dados na tela se alguma query falhar
+    if(r1.error||r2.error||r3.error||r4.error||r5.error){
+      setSyncStatus('error');
+      const erros=[r1,r2,r3,r4,r5].filter(r=>r.error).map(r=>r.error.message).join(', ');
+      toast('Erro ao carregar: '+erros,'error');
+      return;
+    }
+
+    // Tudo ok — atualiza dados
     bancoDados=(r1.data||[]).map(mapFromDB);
     receitasDB={};
     (r2.data||[]).forEach(r=>{receitasDB[bancoParaChave(r.mes)]=r.valor;});
@@ -1329,9 +1330,10 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('settings-email').textContent=usuarioAtual.email;
     // INITIAL_SESSION = primeiro carregamento com sessão existente (F5, abrir aba)
     // SIGNED_IN disparado em F5 também — só carrega se não tinha usuário antes
-    // Carrega dados apenas UMA vez por carregamento de página
-    if(!window._dadosJaCarregados){
-      window._dadosJaCarregados = true;
+    // Carrega dados apenas uma vez — ignora eventos repetidos de SIGNED_IN
+    const agora = Date.now();
+    if(!window._ultimoCarregamento || (agora - window._ultimoCarregamento) > 60000){
+      window._ultimoCarregamento = agora;
       await carregarTudo();
     }
   }else{
