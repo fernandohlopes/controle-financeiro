@@ -705,7 +705,7 @@ async function sair(){
     await sb.auth.signOut();
   }catch(e){}
   bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
-  if(usuarioAtual)sessionStorage.removeItem('cf_loaded_'+usuarioAtual.id);
+  window._dadosJaCarregados = false;
   usuarioAtual=null;
   document.getElementById('app').style.display='none';
   document.getElementById('auth-screen').classList.remove('hidden');
@@ -1329,10 +1329,9 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('settings-email').textContent=usuarioAtual.email;
     // INITIAL_SESSION = primeiro carregamento com sessão existente (F5, abrir aba)
     // SIGNED_IN disparado em F5 também — só carrega se não tinha usuário antes
-    // Carrega dados apenas uma vez por carregamento de página
-    // pageLoadedUserId evita que o segundo SIGNED_IN apague os dados
-    if(window._pageLoadedUserId !== session.user.id){
-      window._pageLoadedUserId = session.user.id;
+    // Carrega dados apenas UMA vez por carregamento de página
+    if(!window._dadosJaCarregados){
+      window._dadosJaCarregados = true;
       await carregarTudo();
     }
   }else{
