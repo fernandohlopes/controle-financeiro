@@ -257,6 +257,7 @@ tbody tr:last-child td{border-bottom:none}
   <button class="nav-btn" onclick="mudarPagina('ajustes',this)">Ajustes</button>
   <div class="nav-right">
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Sincronizado</span></div>
+    <span id="auth-debug-log" style="font-family:var(--mono);font-size:0.58rem;color:var(--amber);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span class="nav-email" id="nav-email"></span>
     <button class="btn-sair" onclick="sair()">Sair</button>
   </div>
@@ -1299,6 +1300,12 @@ document.getElementById('modal-receita').addEventListener('click',function(e){if
 popularSelectsAno();
 
 sb.auth.onAuthStateChange(async(event,session)=>{
+  // LOG VISÍVEL — mostra evento na tela para debug
+  const logEl=document.getElementById('auth-debug-log');
+  if(logEl){
+    const ts=new Date().toLocaleTimeString('pt-BR');
+    logEl.textContent=`[${ts}] evento: ${event} | user: ${session?.user?.email||'none'}`;
+  }
   // Recuperação de senha
   if(event==='PASSWORD_RECOVERY'){
     document.getElementById('auth-screen').classList.add('hidden');
