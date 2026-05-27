@@ -719,8 +719,8 @@ async function sair(){
 }
 
 // ── CARREGAR DADOS ──
-async function carregarTudo(){
-  setSyncStatus('syncing');
+async function carregarTudo(silencioso=false){
+  if(!silencioso)setSyncStatus('syncing');
   try{
     const r1=await sb.from('lancamentos').select('*').order('mes',{ascending:true});
     if(r1.error){setSyncStatus('error');toast('Erro lancamentos: '+r1.error.message,'error');return;}
@@ -1329,17 +1329,11 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('settings-email').textContent=usuarioAtual.email;
     // INITIAL_SESSION = primeiro carregamento com sessão existente (F5, abrir aba)
     // SIGNED_IN disparado em F5 também — só carrega se não tinha usuário antes
-    // Usa sessionStorage para evitar recarregamento duplo no F5
-    const jaCarregou=sessionStorage.getItem('cf_loaded_'+session.user.id);
-    if(!jaCarregou){
-      sessionStorage.setItem('cf_loaded_'+session.user.id,'1');
+    // Carrega dados apenas uma vez por carregamento de página
+    // pageLoadedUserId evita que o segundo SIGNED_IN apague os dados
+    if(window._pageLoadedUserId !== session.user.id){
+      window._pageLoadedUserId = session.user.id;
       await carregarTudo();
-    } else {
-      // Dados já carregados — só atualiza UI sem buscar no banco
-      atualizarDashboard();
-      popularFiltroMeses();
-      popularSelects();
-      renderAjustes();
     }
   }else{
     usuarioAtual=null;
