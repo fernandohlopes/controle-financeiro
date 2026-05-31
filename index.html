@@ -471,22 +471,17 @@ tbody tr:last-child td{border-bottom:none}
 </div></div>
 
 <script>
-// Chaves carregadas do backend — não ficam expostas no HTML
-let sb = null;
-
-async function inicializarSupabase() {
-  const resp = await fetch('/api/config');
-  const { url, key } = await resp.json();
-  const {createClient} = supabase;
-  sb = createClient(url, key, {
-    auth: {
-      persistSession: true,
-      storageKey: 'cf_session_lmocqxea',
-      autoRefreshToken: true,
-      detectSessionInUrl: false
-    }
-  });
-}
+const SUPA_URL='https://lmocqxeabenncfkktcoc.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtb2NxeGVhYmVubmNma2t0Y29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjk3OTMsImV4cCI6MjA5NTMwNTc5M30.8FFzVG6rIV4fBzZWE47OZyAhEhJxgvEB6K2kjiQWxzg';
+const {createClient}=supabase;
+const sb=createClient(SUPA_URL,SUPA_KEY,{
+  auth:{
+    persistSession:true,
+    storageKey:'cf_session_lmocqxea',
+    autoRefreshToken:true,
+    detectSessionInUrl:false
+  }
+});
 
 const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let bancoDados=[],receitasDB={},itensPreparo=[];
@@ -660,11 +655,7 @@ async function submitAuth(){
   errEl.textContent='';
   if(!email||!senha){errEl.style.color='var(--red)';errEl.textContent='Preencha e-mail e senha.';return;}
   btn.disabled=true;btn.textContent='Aguarde...';
-  // Garante que Supabase está inicializado
-  if(!sb){
-    try{ await inicializarSupabase(); }
-    catch(e){ errEl.style.color='var(--red)';errEl.textContent='Erro de conexão. Tente novamente.';btn.disabled=false;btn.textContent=abaAtual==='cadastro'?'Criar Conta':'Entrar';return; }
-  }
+
   try{
     let result;
     if(abaAtual==='cadastro'){
@@ -1306,7 +1297,6 @@ popularSelectsAno();
   document.getElementById('auth-loading').style.display='block';
   document.getElementById('auth-form').style.display='none';
   try{
-    await inicializarSupabase();
     sb.auth.onAuthStateChange((event,session)=>{
       const logEl=document.getElementById('auth-debug-log');
       if(logEl){const ts=new Date().toLocaleTimeString('pt-BR');logEl.textContent=`[${ts}] ${event}`;}
