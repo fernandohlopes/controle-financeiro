@@ -660,6 +660,11 @@ async function submitAuth(){
   errEl.textContent='';
   if(!email||!senha){errEl.style.color='var(--red)';errEl.textContent='Preencha e-mail e senha.';return;}
   btn.disabled=true;btn.textContent='Aguarde...';
+  // Garante que Supabase está inicializado
+  if(!sb){
+    try{ await inicializarSupabase(); }
+    catch(e){ errEl.style.color='var(--red)';errEl.textContent='Erro de conexão. Tente novamente.';btn.disabled=false;btn.textContent=abaAtual==='cadastro'?'Criar Conta':'Entrar';return; }
+  }
   try{
     let result;
     if(abaAtual==='cadastro'){
