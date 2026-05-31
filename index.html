@@ -253,7 +253,6 @@ tbody tr:last-child td{border-bottom:none}
   <button class="nav-btn active" onclick="mudarPagina('resumo',this)">Resumo</button>
   <button class="nav-btn" onclick="mudarPagina('lancar',this)">Lançar</button>
   <button class="nav-btn" onclick="mudarPagina('extrato',this)">Extrato</button>
-  <button class="nav-btn" onclick="mudarPagina('ia',this)">Consultora IA</button>
   <button class="nav-btn" onclick="mudarPagina('ajustes',this)">Ajustes</button>
   <div class="nav-right">
     <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Sincronizado</span></div>
@@ -401,18 +400,6 @@ tbody tr:last-child td{border-bottom:none}
   </div>
 </div>
 
-<!-- IA -->
-<div id="ia" class="page">
-  <div class="section-header"><div class="section-title">Consultora IA</div><div class="section-sub">Análise financeira personalizada</div></div>
-  <div class="card">
-    <div id="chat-box"><div class="msg msg-ia">Olá! Sou sua consultora financeira com IA. Tenho acesso aos seus lançamentos em tempo real. Como posso ajudar?</div></div>
-    <div class="chat-input-row">
-      <input type="text" id="chat-input" placeholder="Pergunte sobre gastos, categorias, tendências..." onkeydown="if(event.key==='Enter')enviarMensagemIA()">
-      <button class="btn btn-primary" onclick="enviarMensagemIA()" id="btn-send">Enviar</button>
-    </div>
-  </div>
-</div>
-
 <!-- AJUSTES -->
 <div id="ajustes" class="page">
   <div class="section-header"><div class="section-title">Configurações</div><div class="section-sub">Gerenciar dados e preferências</div></div>
@@ -484,17 +471,22 @@ tbody tr:last-child td{border-bottom:none}
 </div></div>
 
 <script>
-const SUPA_URL='https://lmocqxeabenncfkktcoc.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtb2NxeGVhYmVubmNma2t0Y29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjk3OTMsImV4cCI6MjA5NTMwNTc5M30.8FFzVG6rIV4fBzZWE47OZyAhEhJxgvEB6K2kjiQWxzg';
-const {createClient}=supabase;
-const sb=createClient(SUPA_URL,SUPA_KEY,{
-  auth:{
-    persistSession:true,
-    storageKey:'cf_session_lmocqxea',
-    autoRefreshToken:true,
-    detectSessionInUrl:false
-  }
-});
+// Chaves carregadas do backend — não ficam expostas no HTML
+let sb = null;
+
+async function inicializarSupabase() {
+  const resp = await fetch('/api/config');
+  const { url, key } = await resp.json();
+  const {createClient} = supabase;
+  sb = createClient(url, key, {
+    auth: {
+      persistSession: true,
+      storageKey: 'cf_session_lmocqxea',
+      autoRefreshToken: true,
+      detectSessionInUrl: false
+    }
+  });
+}
 
 const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let bancoDados=[],receitasDB={},itensPreparo=[];
@@ -702,16 +694,6 @@ async function submitAuth(){
 
 async function sair(){
   try{
-    // Limpa todos os dados de sessão do localStorage
-    const PROJECT_ID='lmocqxeabenncfkktcoc';
-    const toRemove=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&(k.includes('sb-')||k.includes('supabase')||k.includes(PROJECT_ID))){
-        toRemove.push(k);
-      }
-    }
-    toRemove.forEach(k=>localStorage.removeItem(k));
     await sb.auth.signOut();
   }catch(e){}
   bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
@@ -1314,32 +1296,31 @@ document.getElementById('modal-receita').addEventListener('click',function(e){if
 
 popularSelectsAno();
 
-// Usa onAuthStateChange apenas para recuperação de senha e logout
-sb.auth.onAuthStateChange((event, session)=>{
-  const logEl=document.getElementById('auth-debug-log');
-  if(logEl){const ts=new Date().toLocaleTimeString('pt-BR');logEl.textContent=`[${ts}] ${event}`;}
-  if(event==='PASSWORD_RECOVERY'){
-    document.getElementById('auth-screen').classList.add('hidden');
-    document.getElementById('modal-nova-senha').classList.add('open');
-    document.getElementById('nova-senha-input').value='';
-    document.getElementById('nova-senha-confirm').value='';
-    document.getElementById('nova-senha-err').textContent='';
-  }
-  if(event==='SIGNED_OUT'){
-    usuarioAtual=null;
-    bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
-    document.getElementById('app').style.display='none';
-    document.getElementById('auth-screen').classList.remove('hidden');
-    document.getElementById('auth-loading').style.display='none';
-    document.getElementById('auth-form').style.display='block';
-  }
-});
-
 // Carrega sessão UMA vez ao abrir a página — sem depender de onAuthStateChange
 (async()=>{
   document.getElementById('auth-loading').style.display='block';
   document.getElementById('auth-form').style.display='none';
   try{
+    await inicializarSupabase();
+    sb.auth.onAuthStateChange((event,session)=>{
+      const logEl=document.getElementById('auth-debug-log');
+      if(logEl){const ts=new Date().toLocaleTimeString('pt-BR');logEl.textContent=`[${ts}] ${event}`;}
+      if(event==='PASSWORD_RECOVERY'){
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('modal-nova-senha').classList.add('open');
+        document.getElementById('nova-senha-input').value='';
+        document.getElementById('nova-senha-confirm').value='';
+        document.getElementById('nova-senha-err').textContent='';
+      }
+      if(event==='SIGNED_OUT'){
+        usuarioAtual=null;
+        bancoDados=[];receitasDB={};listaPessoas=[];listaCategorias=[];listaCartoes=[];
+        document.getElementById('app').style.display='none';
+        document.getElementById('auth-screen').classList.remove('hidden');
+        document.getElementById('auth-loading').style.display='none';
+        document.getElementById('auth-form').style.display='block';
+      }
+    });
     const{data:{session}}=await sb.auth.getSession();
     if(session?.user){
       usuarioAtual=session.user;
