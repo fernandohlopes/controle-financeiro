@@ -310,10 +310,11 @@ tbody tr:last-child td{border-bottom:none}
       </div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
     <div class="card"><div class="card-label">Gastos por Mês</div><div class="chart-wrap" id="chart-mes"></div></div>
     <div class="card"><div class="card-label">Gastos por Categoria</div><div class="chart-wrap" id="chart-cat"></div></div>
   </div>
+  <div class="card"><div class="card-label">Gastos por Cartão de Crédito</div><div class="chart-wrap" id="chart-cartao"></div></div>
 </div>
 
 <!-- LANÇAR -->
@@ -1226,6 +1227,14 @@ function atualizarDashboard(){
 
   // Gráfico de categorias — filtrado pelo mês selecionado
   renderChart('chart-cat',porCatMes,totalMes,null);
+
+  // Gráfico de cartões — filtrado pelo mês selecionado
+  const porCartaoMes={};
+  dadosMes.forEach(g=>{
+    const cartao=g.cartao||'Sem cartão';
+    porCartaoMes[cartao]=(porCartaoMes[cartao]||0)+(g.valor||0);
+  });
+  renderChart('chart-cartao',porCartaoMes,totalMes,null);
 
   // Saldo do mês filtrado
   const mesExib=bancoParaExib(chaveFiltro+'-01');
