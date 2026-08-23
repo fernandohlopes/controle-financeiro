@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle Financeiro</title>
+<link id="manifest-link" rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Financeiro">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0a0a0a;--surface:#111111;--card:#161616;--card2:#1c1c1c;--border:#252525;--border2:#333333;--gold:#c9a84c;--gold2:#e8c87a;--gold-dim:rgba(201,168,76,0.12);--green:#4ade80;--green-dim:rgba(74,222,128,0.1);--red:#f87171;--red-dim:rgba(248,113,113,0.1);--amber:#fbbf24;--muted:#555555;--text:#e8e8e8;--text2:#888888;--text3:#555555;--serif:'Playfair Display',Georgia,serif;--sans:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;--radius:6px;--radius-lg:12px}
@@ -1103,6 +1111,25 @@ function renderizarLeitura(){
   document.getElementById('leitura-lista').innerHTML=dados.length?
     dados.map(l=>`<tr><td>${esc(l.descricao)}</td><td>${renderParcelaTag(parseInt(l.parcela_atual)||1,parseInt(l.parcelas)||1)}</td><td>${esc(l.categoria)}</td><td class="valor-cell">${fmt(l.valor)}</td></tr>`).join('')
     :'<tr><td colspan="4"><div class="empty-state"><span class="icon">◦</span><p>Nenhum lançamento neste mês.</p></div></td></tr>';
+}
+
+// ── PWA ──
+(function configurarManifestDinamico(){
+  // Gera um manifest com start_url incluindo o token da URL atual (se houver),
+  // para que o app instalado a partir de um link pessoal sempre reabra nele.
+  const params=new URLSearchParams(location.search);
+  const token=params.get('token');
+  const startUrl=token?`./index.html?token=${encodeURIComponent(token)}`:'./index.html';
+  fetch('manifest.json').then(r=>r.json()).then(base=>{
+    const manifest={...base,start_url:startUrl};
+    const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+    document.getElementById('manifest-link').setAttribute('href',URL.createObjectURL(blob));
+  }).catch(()=>{});
+})();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
 }
 
 // ── INIT ──
