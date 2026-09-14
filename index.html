@@ -231,6 +231,7 @@ details.mais[open]>summary::after{content:'−'}
 .chip.parc{background:var(--gold-dim);color:var(--gold2);border-color:rgba(201,168,76,.2);border-radius:5px}
 .chip.avista{background:rgba(74,222,128,.08);color:var(--green);border-color:rgba(74,222,128,.2);border-radius:5px}
 .chip.pend{background:rgba(251,191,36,.1);color:var(--amber);border-color:rgba(251,191,36,.25)}
+.chip.rec{background:rgba(74,222,128,.08);color:var(--green);border-color:rgba(74,222,128,.2)}
 .lancs.sem-mes .chip-mes{display:none}
 .lanc-edit{display:flex;flex-direction:column;gap:10px;grid-column:1/-1}
 .lanc.editando{grid-template-areas:none;grid-template-columns:1fr}
@@ -452,6 +453,7 @@ details.filtros-box[open]>summary::after{content:'−'}
     <button class="nav-btn active" data-pagina="resumo">Resumo</button>
     <button class="nav-btn" data-pagina="lancar">Lançar</button>
     <button class="nav-btn" data-pagina="extrato">Extrato</button>
+    <button class="nav-btn" data-pagina="recorrentes">Fixas</button>
     <button class="nav-btn" data-pagina="ajustes">Ajustes</button>
   </nav>
   <div class="topbar-right">
@@ -510,23 +512,31 @@ details.filtros-box[open]>summary::after{content:'−'}
         <span class="error-msg">Informe uma descrição</span>
       </div>
       <div class="field">
-        <label for="valor">Valor total (R$) *</label>
+        <label for="valor" id="label-valor">Valor total (R$) *</label>
         <input type="text" id="valor" class="inp" placeholder="0,00" inputmode="decimal" autocomplete="off" data-dinheiro>
         <span class="error-msg">Informe um valor válido</span>
       </div>
-      <div class="field">
+      <div class="field" id="field-tipo-valor" style="display:none">
+        <label for="tipo_valor">O valor acima é</label>
+        <select id="tipo_valor" class="inp">
+          <option value="total">O total da compra</option>
+          <option value="parcela">O valor de cada parcela</option>
+        </select>
+      </div>
+      <div class="field full">
         <label for="categoria">Categoria *</label>
         <select id="categoria" class="inp"><option value="" disabled selected>Selecione...</option></select>
         <span class="error-msg">Selecione a categoria</span>
       </div>
       <div class="field full">
-        <label for="mes_referencia">Mês de referência (1ª parcela) *</label>
+        <label for="mes_referencia">Mês de referência *</label>
         <div class="mes-ano-row">
           <select id="mes_referencia" class="inp">
             <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
           </select>
           <select id="ano_referencia" class="inp" aria-label="Ano de referência"></select>
         </div>
+        <span class="field-hint" id="hint-mes">Mês em que cai a 1ª parcela.</span>
         <span class="error-msg" id="err-mes">Selecione o mês e ano</span>
       </div>
 
@@ -543,6 +553,14 @@ details.filtros-box[open]>summary::after{content:'−'}
               <option value="12">12×</option><option value="18">18×</option><option value="24">24×</option>
             </select>
           </div>
+          <div class="field" id="field-parcela-inicial" style="display:none">
+            <label for="parcela_inicial">Esta compra já está na parcela</label>
+            <select id="parcela_inicial" class="inp"></select>
+            <span class="field-hint">Para importar uma compra que começou antes de entrar no app.</span>
+          </div>
+          <label class="lembrar" id="wrap-criar-pagas" for="criar_pagas" style="display:none">
+            <input type="checkbox" id="criar_pagas"> Criar também as parcelas anteriores
+          </label>
           <div class="field">
             <label for="usa_cartao">Forma de pagamento</label>
             <select id="usa_cartao" class="inp">
@@ -573,7 +591,7 @@ details.filtros-box[open]>summary::after{content:'−'}
       </details>
 
       <div class="full parcelas-preview" id="parcelas-preview">
-        <div class="parcelas-preview-title">Parcelas que serão geradas</div>
+        <div class="parcelas-preview-title" id="parcelas-preview-title">Parcelas que serão geradas</div>
         <div class="parcelas-list" id="parcelas-preview-list"></div>
       </div>
 
@@ -627,6 +645,72 @@ details.filtros-box[open]>summary::after{content:'−'}
       <span>Descrição</span><span>Mês</span><span>Parcela</span><span>Responsável</span><span>Cartão</span><span>Categoria</span><span style="text-align:right">Valor</span><span></span>
     </div>
     <div class="lancs" id="lista-extrato"></div>
+  </div>
+</section>
+
+<!-- RECORRENTES -->
+<section id="recorrentes" class="page">
+  <div class="section-header">
+    <div><div class="section-title">Cobranças fixas</div><div class="section-sub">Recorrentes, mês a mês</div></div>
+  </div>
+  <div class="card">
+    <div class="card-label" id="rec-form-label">Nova cobrança</div>
+    <div class="field-hint" style="margin-bottom:16px">
+      O lançamento de cada mês é criado sozinho quando o mês chega — e aparece no extrato como qualquer outro.
+      Editar a cobrança vale para os meses seguintes; os lançamentos já criados continuam como estão.
+    </div>
+    <div class="form-grid">
+      <div class="field full">
+        <label for="rec-desc">Descrição *</label>
+        <input type="text" id="rec-desc" class="inp" maxlength="120" placeholder="Luz, internet, aluguel...">
+      </div>
+      <div class="field">
+        <label for="rec-valor">Valor por mês (R$) *</label>
+        <input type="text" id="rec-valor" class="inp" placeholder="0,00" inputmode="decimal" autocomplete="off" data-dinheiro>
+      </div>
+      <div class="field">
+        <label for="rec-categoria">Categoria *</label>
+        <select id="rec-categoria" class="inp"></select>
+      </div>
+      <div class="field">
+        <label for="rec-responsavel">Responsável *</label>
+        <select id="rec-responsavel" class="inp"></select>
+      </div>
+      <div class="field">
+        <label for="rec-cartao">Forma de pagamento</label>
+        <select id="rec-cartao" class="inp"></select>
+      </div>
+      <div class="field">
+        <label for="rec-mes-inicio">Começa em *</label>
+        <div class="mes-ano-row">
+          <select id="rec-mes-inicio" class="inp" aria-label="Mês de início"></select>
+          <select id="rec-ano-inicio" class="inp" aria-label="Ano de início"></select>
+        </div>
+        <span class="field-hint">Um mês passado faz o app criar também os meses anteriores.</span>
+      </div>
+      <div class="field">
+        <label for="rec-tem-fim">Tem fim?</label>
+        <select id="rec-tem-fim" class="inp">
+          <option value="nao">Não, segue todo mês</option>
+          <option value="sim">Sim, até um mês certo</option>
+        </select>
+      </div>
+      <div class="field full" id="rec-field-fim" style="display:none">
+        <label for="rec-mes-fim">Último mês</label>
+        <div class="mes-ano-row">
+          <select id="rec-mes-fim" class="inp" aria-label="Último mês"></select>
+          <select id="rec-ano-fim" class="inp" aria-label="Ano do último mês"></select>
+        </div>
+      </div>
+      <div class="botoes-col full">
+        <button class="btn btn-primary btn-full" id="btn-salvar-rec">Salvar cobrança</button>
+        <button class="btn btn-ghost btn-full" id="btn-cancelar-rec" style="display:none">Cancelar edição</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-label">Cobranças cadastradas</div>
+    <div class="settings-list" id="lista-recorrentes"></div>
   </div>
 </section>
 
@@ -695,6 +779,7 @@ details.filtros-box[open]>summary::after{content:'−'}
   <button class="tab active" data-pagina="resumo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h4v8H3zM10 3h4v18h-4zM17 9h4v12h-4z"/></svg>Resumo</button>
   <button class="tab" data-pagina="lancar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Lançar</button>
   <button class="tab" data-pagina="extrato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>Extrato</button>
+  <button class="tab" data-pagina="recorrentes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2M21 12a9 9 0 0 1-15.5 6.2" stroke-linecap="round"/><path d="M18 3v3h-3M6 21v-3h3" stroke-linecap="round"/></svg>Fixas</button>
   <button class="tab" data-pagina="ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6A7 7 0 0 0 19 12z"/></svg>Ajustes</button>
 </nav>
 
@@ -743,9 +828,10 @@ const K={sessao:'cf_sessao',usuario:'cf_usuario',manter:'cf_manter',principal:'c
   cache:'cf_cache',outbox:'cf_outbox',preparo:'cf_preparo',iosDica:'cf_ios_dica',ultCartao:'cf_ultimo_cartao'};
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-const S={lancamentos:[],receitas:{},pessoas:[],categorias:[],cartoes:[],atualizadoEm:null};
+const S={lancamentos:[],receitas:{},pessoas:[],categorias:[],cartoes:[],recorrentes:[],atualizadoEm:null};
 let SESSAO=null,outbox=[],itensPreparo=[],pessoaPrincipal=null;
-let paginaAtiva='resumo',editandoId=null,filtroMesUsuario=null;
+let paginaAtiva='resumo',editandoId=null,editandoRecId=null,filtroMesUsuario=null;
+const PREFIXO_REC='REC-'; // grupo_id dos lançamentos gerados por cobrança fixa
 let enviando=false,carregando=false,ocupado=0,erroSync=null;
 let appAberto=false,formIniciado=false,versaoLocal=0,ultimaCarga=0;
 const emVoo=new Set(); // ids das operações da fila que estão a caminho do servidor
@@ -857,6 +943,7 @@ function carregarCache(){
     const d=JSON.parse(raw);
     S.lancamentos=d.lancamentos||[];S.receitas=d.receitas||{};
     S.pessoas=d.pessoas||[];S.categorias=d.categorias||[];S.cartoes=d.cartoes||[];
+    S.recorrentes=d.recorrentes||[];
     S.atualizadoEm=d.atualizadoEm||null;
     return !!(S.lancamentos.length||S.pessoas.length||S.categorias.length||S.cartoes.length);
   }catch(e){return false;}
@@ -1047,6 +1134,7 @@ function aplicarDados(data){
   S.receitas={};
   (data.receitas||[]).forEach(r=>{const k=normalizarMesChave(r.mes);if(k)S.receitas[k]=Number(r.valor)||0;});
   S.pessoas=data.pessoas||[];S.categorias=data.categorias||[];S.cartoes=data.cartoes||[];
+  S.recorrentes=(data.recorrentes||[]).map(mapRecFromAPI);
   S.atualizadoEm=Date.now();
   if(data.usuario&&SESSAO&&SESSAO.usuario!==data.usuario){SESSAO.usuario=data.usuario;salvarSessao(SESSAO);}
   carregarPessoaPrincipal();salvarCache();render();
@@ -1061,6 +1149,18 @@ function mapFromAPI(r){
 const paraAPI=i=>({id:i.id,desc:i.desc,mesDate:i.mesChave+'-01',valor:i.valor,
   responsavel:i.responsavel,cartao:i.cartao,categoria:i.categoria,
   parcelas:i.parcelas,parcelaAtual:i.parcelaAtual,grupoId:i.grupoId});
+/* Cobranças fixas: a regra vive na aba Recorrentes; o lançamento de cada
+   mês é materializado pelo servidor e chega como lançamento comum. */
+function mapRecFromAPI(r){
+  return{id:String(r.id),desc:String(r.descricao==null?'':r.descricao),valor:Number(r.valor)||0,
+    responsavel:String(r.responsavel||''),cartao:String(r.cartao||'Sem cartão'),
+    categoria:String(r.categoria||''),mesInicio:normalizarMesChave(r.mes_inicio),
+    mesFim:normalizarMesChave(r.mes_fim),ultimoMes:normalizarMesChave(r.ultimo_mes),
+    ativa:String(r.ativa==null?'sim':r.ativa).toLowerCase()!=='nao'};
+}
+const recParaAPI=r=>({id:r.id,desc:r.desc,valor:r.valor,responsavel:r.responsavel,
+  cartao:r.cartao,categoria:r.categoria,mesInicio:r.mesInicio+'-01',
+  mesFim:r.mesFim?r.mesFim+'-01':'',ativa:!!r.ativa});
 
 /* Aplica local + enfileira + tenta enviar. Nunca bloqueia a tela. */
 function mutar(aplicar,acao,dados){
@@ -1105,6 +1205,7 @@ function render(){
   if(paginaAtiva==='resumo')renderResumo();
   else if(paginaAtiva==='lancar')renderLancar();
   else if(paginaAtiva==='extrato')renderExtrato();
+  else if(paginaAtiva==='recorrentes')renderRecorrentes();
   else if(paginaAtiva==='ajustes')renderAjustes();
 }
 
@@ -1217,16 +1318,61 @@ function renderLancar(){
   }
   renderConferencia();
 }
+/* ── parcelamento ──────────────────────────────────────────
+   O valor informado pode ser o TOTAL da compra (rateado entre as
+   parcelas) ou o valor de CADA parcela (repetido). A compra pode
+   também já estar em andamento: "parcela 6 de 10" no mês de
+   referência, gerando da 6ª em diante — ou desde a 1ª, retroagindo
+   os meses, se a caixa "criar também as parcelas anteriores"
+   estiver marcada.                                                */
+const opcoesForm=()=>{
+  const n=Math.max(parseInt($('parcelas').value,10)||1,1);
+  const p0=Math.min(Math.max(parseInt($('parcela_inicial').value,10)||1,1),n);
+  return {n,p0,tipo:$('tipo_valor').value==='parcela'?'parcela':'total',
+    incluirPagas:n>1&&p0>1&&$('criar_pagas').checked};
+};
+/* valor de cada uma das n parcelas, na ordem 1..n */
+const valoresParcelas=(v,n,tipo)=>tipo==='parcela'?Array.from({length:n},()=>v):dividirValor(v,n);
+
+function atualizarFormParcelas(){
+  const n=Math.max(parseInt($('parcelas').value,10)||1,1);
+  const sel=$('parcela_inicial');
+  $('field-tipo-valor').style.display=n>1?'flex':'none';
+  $('field-parcela-inicial').style.display=n>1?'flex':'none';
+  if(n>1){
+    const atual=Math.min(Math.max(parseInt(sel.value,10)||1,1),n);
+    preencherSelect(sel,Array.from({length:n},(_,i)=>[String(i+1),`${i+1}ª de ${n}`]),String(atual));
+  }else{
+    preencherSelect(sel,[['1','1ª de 1']],'1');
+  }
+  const {p0,tipo}=opcoesForm();
+  const mostraPagas=n>1&&p0>1;
+  $('wrap-criar-pagas').style.display=mostraPagas?'flex':'none';
+  if(!mostraPagas)$('criar_pagas').checked=false;
+  $('label-valor').textContent=(n>1&&tipo==='parcela')?'Valor da parcela (R$) *':'Valor total (R$) *';
+  $('hint-mes').textContent=p0>1
+    ? `Mês em que cai a parcela ${p0}/${n}.`
+    : (n>1?'Mês em que cai a 1ª parcela.':'Mês a que a despesa pertence.');
+  previewParcelas();
+}
 function previewParcelas(){
   const m=parseInt($('mes_referencia').value,10)||0, a=parseInt($('ano_referencia').value,10)||0;
-  const n=parseInt($('parcelas').value,10)||0, v=parseValor($('valor').value);
-  const box=$('parcelas-preview');
-  if(!m||!a||n<=1||!(v>0)){box.style.display='none';return;}
+  const v=parseValor($('valor').value), box=$('parcelas-preview');
+  const {n,p0,tipo,incluirPagas}=opcoesForm();
+  if(!m||!a||!(v>0)||(n<=1&&p0<=1)){box.style.display='none';return;}
+  const valores=valoresParcelas(v,n,tipo);
+  const de=incluirPagas?1:p0;
+  const badges=[];let soma=0;
+  for(let i=de;i<=n;i++){
+    const p=proximoMes(m,a,i-p0);
+    soma+=valores[i-1];
+    badges.push(`<div class="parcela-badge">${pad2(i)}/${pad2(n)} · ${MESES[p.mes-1].slice(0,3)}/${p.ano} · ${fmt(valores[i-1])}</div>`);
+  }
   box.style.display='block';
-  $('parcelas-preview-list').innerHTML=dividirValor(v,n).map((val,i)=>{
-    const p=proximoMes(m,a,i);
-    return `<div class="parcela-badge">${pad2(i+1)}/${pad2(n)} · ${MESES[p.mes-1].slice(0,3)}/${p.ano} · ${fmt(val)}</div>`;
-  }).join('');
+  $('parcelas-preview-title').textContent=
+    `${badges.length} de ${n} parcelas · ${fmt(soma)}` +
+    (badges.length<n?` (total da compra ${fmt(valores.reduce((s,x)=>s+x,0))})`:'');
+  $('parcelas-preview-list').innerHTML=badges.join('');
 }
 function togglePessoa(el){
   const on=el.classList.toggle('checked');
@@ -1269,6 +1415,7 @@ function validar(){
 function resetForm(){
   $('desc').value='';$('valor').value='';
   $('parcelas').value='1';$('is_dividida').value='nao';
+  $('tipo_valor').value='total';$('criar_pagas').checked=false;
   $('categoria').selectedIndex=0;
   $('responsavel_unico').value=pessoaPrincipal||'';
   $('usa_cartao').value='sim';
@@ -1277,37 +1424,50 @@ function resetForm(){
   const hoje=new Date();
   $('mes_referencia').value=String(hoje.getMonth()+1);
   $('ano_referencia').value=String(hoje.getFullYear());
-  alternarDivisao();alternarCartao();
+  alternarDivisao();alternarCartao();atualizarFormParcelas();
   $('parcelas-preview').style.display='none';
   limparErros();
 }
-function gerarParcelas(desc,mes,ano,total,resp,cartao,cat,n,grupoId){
-  return dividirValor(total,n).map((v,i)=>{
-    const p=proximoMes(mes,ano,i);
-    return{id:uid(),desc,mesChave:`${p.ano}-${pad2(p.mes)}`,valor:v,responsavel:resp,
-      cartao,categoria:cat,parcelas:n,parcelaAtual:i+1,grupoId};
-  });
+/* `valores` tem sempre n posições (1ª..nª parcela); geradas só as do
+   intervalo pedido. O mês da parcela i é o de referência deslocado
+   de (i - p0) meses, então p0 cai exatamente no mês escolhido. */
+function gerarParcelas(desc,mes,ano,valores,resp,cartao,cat,op,grupoId){
+  const de=op.incluirPagas?1:op.p0, itens=[];
+  for(let i=de;i<=op.n;i++){
+    const p=proximoMes(mes,ano,i-op.p0);
+    itens.push({id:uid(),desc,mesChave:`${p.ano}-${pad2(p.mes)}`,valor:valores[i-1],
+      responsavel:resp,cartao,categoria:cat,parcelas:op.n,parcelaAtual:i,grupoId});
+  }
+  return itens;
 }
 function prepararLancamento(){
   if(!validar())return;
   const desc=$('desc').value.trim(), valor=parseValor($('valor').value);
   const mes=parseInt($('mes_referencia').value,10), ano=parseInt($('ano_referencia').value,10);
-  const cat=$('categoria').value, n=parseInt($('parcelas').value,10)||1;
+  const cat=$('categoria').value, op=opcoesForm();
   const cartao=$('usa_cartao').value==='sim'?$('cartao').value:'Sem cartão';
   if(cartao!=='Sem cartão')store.set(K.ultCartao,cartao);
   const base=uid().slice(0,8).toUpperCase();
+  let criados=0;
   if($('is_dividida').value==='sim'){
     const pessoas=[...document.querySelectorAll('#divisao-checkboxes .checked')].map(c=>c.dataset.nome);
+    // O valor informado é da despesa inteira: rateia entre as pessoas e,
+    // dentro da cota de cada uma, entre as parcelas.
     const cotas=dividirValor(valor,pessoas.length);
     pessoas.forEach((nome,i)=>{
-      itensPreparo.push(...gerarParcelas(desc+' (Div.)',mes,ano,cotas[i],nome,cartao,cat,n,`${base}-${i+1}`));
+      const itens=gerarParcelas(desc+' (Div.)',mes,ano,valoresParcelas(cotas[i],op.n,op.tipo),
+        nome,cartao,cat,op,`${base}-${i+1}`);
+      criados+=itens.length;itensPreparo.push(...itens);
     });
   }else{
-    itensPreparo.push(...gerarParcelas(desc,mes,ano,valor,$('responsavel_unico').value,cartao,cat,n,base));
+    const itens=gerarParcelas(desc,mes,ano,valoresParcelas(valor,op.n,op.tipo),
+      $('responsavel_unico').value,cartao,cat,op,base);
+    criados+=itens.length;itensPreparo.push(...itens);
   }
   salvarPreparo();resetForm();render();
-  const ult=proximoMes(mes,ano,n-1);
-  toast(n===1?'Adicionado à conferência':`${n} parcelas até ${MESES[ult.mes-1].slice(0,3)}/${ult.ano}`,'info');
+  const ult=proximoMes(mes,ano,op.n-op.p0);
+  toast(op.n===1?'Adicionado à conferência'
+    :`${criados} parcela(s) até ${MESES[ult.mes-1].slice(0,3)}/${ult.ano}`,'info');
   $('card-conferencia').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function renderConferencia(){
@@ -1340,6 +1500,7 @@ function idsPendentes(){
   return s;
 }
 
+const ehRecorrente=l=>String(l.grupoId||'').indexOf(PREFIXO_REC)===0;
 function linhaLanc(l,{conferencia=false,pend=null}={}){
   const acoes=conferencia
     ? `<button class="btn btn-ghost btn-sm" data-act="remover-preparo" data-id="${esc(l.id)}">Remover</button>`
@@ -1349,7 +1510,7 @@ function linhaLanc(l,{conferencia=false,pend=null}={}){
   /* Ordem do DOM = ordem das colunas do desktop. O chip do mês é sempre
      emitido; esconder por CSS evita desalinhar a linha do cabeçalho. */
   return `<div class="lanc" data-id="${esc(l.id)}">
-    <div class="lanc-desc">${esc(l.desc)}${pend&&pend.has(l.id)?' <span class="chip pend">não enviado</span>':''}</div>
+    <div class="lanc-desc">${esc(l.desc)}${ehRecorrente(l)?' <span class="chip rec">fixa</span>':''}${pend&&pend.has(l.id)?' <span class="chip pend">não enviado</span>':''}</div>
     <div class="lanc-meta">
       <span class="chip chip-mes" title="${esc(chaveExib(l.mesChave))}">${esc(chaveMedia(l.mesChave))}</span>
       ${chipParcela(l.parcelaAtual,l.parcelas)}
@@ -1509,6 +1670,154 @@ async function exportarCSV(){
   toast(`${dados.length} linha(s) exportadas`,'success');
 }
 
+/* ═══════════════ COBRANÇAS FIXAS (RECORRENTES) ═══════════════
+   A regra fica na aba Recorrentes; quem cria o lançamento de cada mês é
+   o servidor, na carga dos dados, e ele nunca refaz um mês já gerado —
+   por isso apagar uma parcela no extrato não a traz de volta, e editar a
+   regra só alcança os meses que ainda não existem.                      */
+function renderRecorrentes(){
+  preencherSelect($('rec-categoria'),nomes(S.categorias),$('rec-categoria').value,'Selecione...');
+  preencherSelect($('rec-responsavel'),nomes(S.pessoas),$('rec-responsavel').value||pessoaPrincipal||'','Quem paga?');
+  preencherSelect($('rec-cartao'),[['Sem cartão','Conta, débito ou outro'],...nomes(S.cartoes)],
+    $('rec-cartao').value||'Sem cartão');
+  $('rec-field-fim').style.display=$('rec-tem-fim').value==='sim'?'flex':'none';
+
+  const lista=$('lista-recorrentes');
+  if(!S.recorrentes.length){
+    setHtml(lista,'<div class="settings-empty">Nenhuma cobrança fixa cadastrada</div>');return;
+  }
+  const ordenadas=[...S.recorrentes].sort((a,z)=>a.desc.localeCompare(z.desc,'pt-BR'));
+  setHtml(lista,ordenadas.map(r=>{
+    const geradas=S.lancamentos.filter(l=>l.grupoId===PREFIXO_REC+r.id).length;
+    const periodo=`${chaveMedia(r.mesInicio)} → ${r.mesFim?chaveMedia(r.mesFim):'sem fim'}`;
+    const emEdicao=String(editandoRecId)===String(r.id);
+    return `<div class="settings-item">
+      <div class="settings-item-info">
+        <div class="settings-item-name">${esc(r.desc)}
+          ${r.ativa?'':'<span class="chip pend">pausada</span>'}
+          ${emEdicao?'<span class="badge-eu">editando</span>':''}
+        </div>
+        <div class="settings-item-sub">${fmt(r.valor)} por mês · ${periodo}<br>
+          ${esc(r.categoria)} · ${esc(r.responsavel)} · ${esc(r.cartao)}<br>
+          ${geradas} lançamento(s) gerado(s)${r.ultimoMes?' · último: '+chaveMedia(r.ultimoMes):''}</div>
+      </div>
+      <div class="settings-item-actions">
+        <button class="btn btn-ghost btn-sm" data-act="editar-rec" data-id="${esc(r.id)}">Editar</button>
+        <button class="btn btn-ghost btn-sm" data-act="pausar-rec" data-id="${esc(r.id)}">${r.ativa?'Pausar':'Retomar'}</button>
+        <button class="btn btn-ghost btn-sm" data-act="excluir-rec" data-id="${esc(r.id)}" style="color:var(--red)" aria-label="Excluir ${esc(r.desc)}">✕</button>
+      </div></div>`;
+  }).join(''));
+}
+function recFormLimpar(){
+  editandoRecId=null;
+  $('rec-desc').value='';$('rec-valor').value='';
+  $('rec-categoria').selectedIndex=0;
+  $('rec-responsavel').value=pessoaPrincipal||'';
+  $('rec-cartao').value='Sem cartão';
+  $('rec-tem-fim').value='nao';
+  const hoje=new Date();
+  $('rec-mes-inicio').value=String(hoje.getMonth()+1);
+  $('rec-ano-inicio').value=String(hoje.getFullYear());
+  $('rec-mes-fim').value=String(hoje.getMonth()+1);
+  $('rec-ano-fim').value=String(hoje.getFullYear());
+  $('rec-form-label').textContent='Nova cobrança';
+  $('btn-salvar-rec').textContent='Salvar cobrança';
+  $('btn-cancelar-rec').style.display='none';
+  render();
+}
+function editarRecorrente(id){
+  const r=S.recorrentes.find(x=>String(x.id)===String(id));if(!r)return;
+  editandoRecId=String(r.id);
+  $('rec-desc').value=r.desc;
+  $('rec-valor').value=fmtNum(r.valor);
+  $('rec-tem-fim').value=r.mesFim?'sim':'nao';
+  const [ai,mi]=r.mesInicio.split('-');
+  $('rec-ano-inicio').value=ai;$('rec-mes-inicio').value=String(parseInt(mi,10));
+  if(r.mesFim){
+    const [af,mf]=r.mesFim.split('-');
+    $('rec-ano-fim').value=af;$('rec-mes-fim').value=String(parseInt(mf,10));
+  }
+  $('rec-form-label').textContent='Editar cobrança';
+  $('btn-salvar-rec').textContent='Salvar alterações';
+  $('btn-cancelar-rec').style.display='flex';
+  render();
+  // os selects de categoria/responsável/cartão só existem depois do render
+  $('rec-categoria').value=r.categoria;
+  $('rec-responsavel').value=r.responsavel;
+  $('rec-cartao').value=r.cartao;
+  $('rec-form-label').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function gravarRecorrente(regra,editando,msgOk){
+  if(!exigirOnline())return false;
+  let ok=false;
+  await comOcupado(async()=>{
+    try{
+      await api(editando?'updateRecorrente':'addRecorrente',recParaAPI(regra));
+      versaoLocal++;
+      const i=S.recorrentes.findIndex(r=>String(r.id)===String(regra.id));
+      if(i>=0)S.recorrentes[i]=regra;else S.recorrentes.push(regra);
+      salvarCache();toast(msgOk,'success');ok=true;
+    }catch(e){if(!e.sessao)toast(erroAmigavel(e),'error');}
+  });
+  if(ok)await recarregar({forcar:true}); // traz os lançamentos que o servidor gerou
+  return ok;
+}
+async function salvarRecorrente(){
+  const desc=$('rec-desc').value.trim(), valor=parseValor($('rec-valor').value);
+  const cat=$('rec-categoria').value, resp=$('rec-responsavel').value;
+  const cartao=$('rec-cartao').value||'Sem cartão';
+  const mi=parseInt($('rec-mes-inicio').value,10), ai=parseInt($('rec-ano-inicio').value,10);
+  if(!desc)return toast('Informe a descrição','error');
+  if(!(valor>0))return toast('Informe um valor válido','error');
+  if(!cat)return toast('Selecione a categoria','error');
+  if(!resp)return toast('Selecione o responsável','error');
+  if(!mi||!ai)return toast('Informe o mês de início','error');
+  const mesInicio=`${ai}-${pad2(mi)}`;
+  let mesFim='';
+  if($('rec-tem-fim').value==='sim'){
+    const mf=parseInt($('rec-mes-fim').value,10), af=parseInt($('rec-ano-fim').value,10);
+    if(!mf||!af)return toast('Informe o último mês','error');
+    mesFim=`${af}-${pad2(mf)}`;
+    if(mesFim<mesInicio)return toast('O último mês é anterior ao mês de início','error');
+  }
+  const editando=!!editandoRecId;
+  const antiga=editando?S.recorrentes.find(r=>String(r.id)===String(editandoRecId)):null;
+  if(editando&&!antiga)return toast('Cobrança não encontrada. Recarregue os dados.','error');
+  const regra={id:editando?editandoRecId:uid(),desc,valor,responsavel:resp,cartao,categoria:cat,
+    mesInicio,mesFim,ultimoMes:antiga?antiga.ultimoMes:'',ativa:antiga?antiga.ativa:true};
+  if(await gravarRecorrente(regra,editando,editando?'Cobrança atualizada':`"${desc}" cadastrada`))recFormLimpar();
+}
+async function pausarRecorrente(id){
+  const r=S.recorrentes.find(x=>String(x.id)===String(id));if(!r)return;
+  if(r.ativa&&!confirm(`Pausar "${r.desc}"?\n\nEla para de gerar lançamentos novos. Os que já existem ficam no extrato.`))return;
+  await gravarRecorrente({...r,ativa:!r.ativa},true,r.ativa?'Cobrança pausada':'Cobrança retomada');
+}
+async function excluirRecorrente(id){
+  const r=S.recorrentes.find(x=>String(x.id)===String(id));if(!r)return;
+  const geradas=S.lancamentos.filter(l=>l.grupoId===PREFIXO_REC+r.id);
+  if(!confirm(`Excluir a cobrança fixa "${r.desc}"?\n\nEla para de gerar lançamentos novos.`))return;
+  let apagar=false;
+  if(geradas.length){
+    apagar=confirm(`Apagar também os ${geradas.length} lançamento(s) que ela já gerou?\n\n`+
+      `OK = apaga do extrato (total ${fmt(geradas.reduce((s,l)=>s+l.valor,0))}).\n`+
+      `Cancelar = mantém o histórico.`);
+  }
+  if(!exigirOnline())return;
+  await comOcupado(async()=>{
+    try{
+      await api('removerRecorrente',{id:r.id,apagarLancamentos:apagar});
+      versaoLocal++;
+      S.recorrentes=S.recorrentes.filter(x=>String(x.id)!==String(r.id));
+      if(apagar){
+        const ids=new Set(geradas.map(l=>l.id));
+        S.lancamentos=S.lancamentos.filter(l=>!ids.has(l.id));
+      }
+      if(String(editandoRecId)===String(r.id))recFormLimpar();
+      salvarCache();toast(`"${r.desc}" excluída`,'info');
+    }catch(e){if(!e.sessao)toast(erroAmigavel(e),'error');}
+  });
+}
+
 /* ═══════════════ AJUSTES ═══════════════ */
 const contarUso=(campo,valor)=>S.lancamentos.filter(l=>l[campo]===valor).length;
 function renderAjustes(){
@@ -1629,6 +1938,8 @@ async function limparDados(){
       await api('limparDados');
       versaoLocal++;
       S.lancamentos=[];S.receitas={};itensPreparo=[];salvarPreparo();editandoId=null;
+      // o servidor zera o "último mês gerado": as cobranças fixas recriam tudo
+      S.recorrentes=S.recorrentes.map(r=>({...r,ultimoMes:''}));
       outbox=outbox.filter(o=>!['addLancamentos','updateLancamento','deleteLancamentos','upsertReceita'].includes(o.acao));
       salvarOutbox();salvarCache();toast('Dados apagados','info');
     }catch(e){if(!e.sessao)toast(erroAmigavel(e),'error');}
@@ -1638,6 +1949,9 @@ async function limparDados(){
 /* ── RECEITA ── */
 function abrirModalReceita(){
   const chave=mesResumo(),[ano,mes]=chave.split('-');
+  /* O select precisa conter o ano escolhido: sem isso a atribuição abaixo
+     é ignorada em silêncio e a receita iria para o ano que estava aberto. */
+  preencherSelect($('receita-ano'),anosDisponiveis(parseInt(ano,10)).map(a=>[String(a),String(a)]),ano);
   $('receita-mes').value=String(parseInt(mes,10));
   $('receita-ano').value=ano;
   $('modal-receita-sub').textContent=chaveExib(chave);
@@ -1776,9 +2090,13 @@ if('serviceWorker' in navigator){
         });
       });
     }).catch(()=>{});
+    /* Só recarrega quando TROCA de service worker. Na primeira visita não
+       havia controlador, e o clients.claim() da instalação recarregava a
+       página no meio do login. */
     let recarregando=false;
+    const tinhaControlador=!!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      if(recarregando)return;recarregando=true;location.reload();
+      if(recarregando||!tinhaControlador)return;recarregando=true;location.reload();
     });
   });
 }
@@ -1801,7 +2119,10 @@ const ACOES={
   'cancelar-edicao':()=>{editandoId=null;render();},
   'salvar-edicao':el=>salvarEdicao(el.dataset.id),
   'excluir':el=>excluir(el.dataset.id),
-  'excluir-grupo':el=>excluirGrupo(el.dataset.grupo)
+  'excluir-grupo':el=>excluirGrupo(el.dataset.grupo),
+  'editar-rec':el=>editarRecorrente(el.dataset.id),
+  'pausar-rec':el=>pausarRecorrente(el.dataset.id),
+  'excluir-rec':el=>excluirRecorrente(el.dataset.id)
 };
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');
@@ -1850,11 +2171,15 @@ on('btn-limpar-conferencia','click',()=>{
   if(!itensPreparo.length||!confirm('Descartar todos os itens da conferência?'))return;
   itensPreparo=[];salvarPreparo();render();
 });
-['valor','parcelas','mes_referencia','ano_referencia'].forEach(id=>{
-  on(id,'input',previewParcelas);on(id,'change',previewParcelas);
+['valor','parcelas','mes_referencia','ano_referencia','tipo_valor','parcela_inicial'].forEach(id=>{
+  on(id,'input',atualizarFormParcelas);on(id,'change',atualizarFormParcelas);
 });
+on('criar_pagas','change',atualizarFormParcelas);
 on('usa_cartao','change',alternarCartao);
 on('is_dividida','change',alternarDivisao);
+on('btn-salvar-rec','click',salvarRecorrente);
+on('btn-cancelar-rec','click',recFormLimpar);
+on('rec-tem-fim','change',render);
 on('f_mes','change',()=>{filtroMesUsuario=$('f_mes').value;render();});
 ['f_resp','f_cartao','f_cat','f_ordem'].forEach(id=>on(id,'change',render));
 on('f_busca','input',render);
@@ -1887,10 +2212,13 @@ document.addEventListener('visibilitychange',()=>{
 setInterval(()=>{if(outbox.length&&SESSAO)processarFila();},60000);
 
 /* ═══════════════ INICIALIZAÇÃO ═══════════════ */
-(function anos(){
-  const y=new Date().getFullYear();
-  ['receita-ano','ano_referencia'].forEach(id=>{
+(function mesesEAnos(){
+  const hoje=new Date(), y=hoje.getFullYear(), m=hoje.getMonth()+1;
+  ['receita-ano','ano_referencia','rec-ano-inicio','rec-ano-fim'].forEach(id=>{
     $(id).innerHTML=anosDisponiveis().map(a=>`<option${a===y?' selected':''}>${a}</option>`).join('');
+  });
+  ['rec-mes-inicio','rec-mes-fim'].forEach(id=>{
+    $(id).innerHTML=MESES.map((nome,i)=>`<option value="${i+1}"${i+1===m?' selected':''}>${nome}</option>`).join('');
   });
 })();
 
