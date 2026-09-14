@@ -5,7 +5,7 @@
      ficam no localStorage (cache + fila), não aqui.
    Ao publicar uma nova versão, incremente CACHE_VERSION. */
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `controle-financeiro-${CACHE_VERSION}`;
 
 const SHELL = [
