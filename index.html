@@ -352,6 +352,13 @@ button.chip{cursor:pointer;font-family:var(--mono);line-height:1.3}
 .lancs.sem-mes .chip-mes{display:none}
 .lanc-edit{display:flex;flex-direction:column;gap:10px;grid-column:1/-1}
 .lanc.editando{grid-template-areas:none;grid-template-columns:1fr}
+details.edit-div{border:1px solid var(--border);border-radius:var(--radius);background:var(--card)}
+details.edit-div>summary{padding:12px 14px;cursor:pointer;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);list-style:none;display:flex;justify-content:space-between}
+details.edit-div>summary::-webkit-details-marker{display:none}
+details.edit-div>summary::after{content:'+';color:var(--gold)}
+details.edit-div[open]>summary::after{content:'−'}
+.edit-div-corpo{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}
+.edit-aviso{color:var(--gold2)}
 
 .filtros{display:grid;grid-template-columns:1fr;gap:9px}
 .busca-row{display:flex;gap:9px;margin-bottom:14px}
@@ -512,6 +519,7 @@ details.filtros-box[open]>summary::after{content:'−'}
   #lista-extrato .lanc-edit .inp{padding-left:12px}
   #lista-extrato .lanc-edit select.inp{padding-right:28px;background-position:right 10px center}
   #lista-extrato .lanc-edit .edit-botoes{grid-column:1/-1;justify-content:flex-end}
+  #lista-extrato .lanc-edit .edit-div,#lista-extrato .lanc-edit .edit-aviso{grid-column:1/-1}
   #lista-extrato .lanc-edit .edit-botoes .btn{flex:0 0 160px!important}
   .modal-overlay{align-items:center}
   .modal-box{border-radius:var(--radius-lg);padding:30px;max-width:430px;animation:none}
@@ -2160,6 +2168,17 @@ function linhaEdicao(l){
       <select id="e-car" class="inp" aria-label="Cartão">${op(nomes([...S.cartoes,{nome:'Sem cartão'}],l.cartao),l.cartao)}</select>
       <select id="e-cat" class="inp" aria-label="Categoria">${op(nomes(S.categorias,l.categoria),l.categoria)}</select>
       <input type="text" id="e-val" class="inp" value="${fmtNum(l.valor)}" inputmode="decimal" autocomplete="off" aria-label="Valor" data-dinheiro>
+      <details class="edit-div" id="e-div-box">
+        <summary>Dividir com outras pessoas</summary>
+        <div class="edit-div-corpo">
+          <div class="field-hint">Marque 2 ou mais. O valor acima é repartido entre elas (em centavos, sem sobra).</div>
+          <div class="checkbox-group" id="e-div">${S.pessoas.map(p=>`<div class="checkbox-item" role="checkbox" aria-checked="false" tabindex="0" data-act="toggle-pessoa" data-nome="${esc(p.nome)}">${esc(p.nome)}</div>`).join('')}</div>
+          ${ehRecorrente(l)
+            ?'<div class="field-hint">Cobrança fixa: a divisão vale para este mês e os seguintes — cada pessoa passa a ter a sua cobrança fixa com a sua parte. Precisa de internet.</div>'
+            :''}
+        </div>
+      </details>
+      ${l.parcelas>1&&!ehRecorrente(l)?`<div class="field-hint edit-aviso">Parcela ${pad2(l.parcelaAtual)}/${pad2(l.parcelas)}: o que você mudar vale para esta e as seguintes${l.parcelaAtual<l.parcelas?` (até ${pad2(l.parcelas)}/${pad2(l.parcelas)})`:''}. As anteriores não mudam.</div>`:''}
       <div class="edit-botoes" style="display:flex;gap:9px">
         <button class="btn btn-primary" style="flex:1" data-act="salvar-edicao" data-id="${esc(l.id)}">Salvar</button>
         <button class="btn btn-ghost" style="flex:1" data-act="cancelar-edicao">Cancelar</button>
@@ -2173,6 +2192,9 @@ function capturarRascunho(){
   CAMPOS_EDICAO.forEach(i=>{const el=$(i);if(el)r.valores[i]=el.value;});
   const a=document.activeElement;
   if(a&&CAMPOS_EDICAO.includes(a.id)){r.foco=a.id;try{r.sel=[a.selectionStart,a.selectionEnd];}catch(e){}}
+  // a divisão também sobrevive a um redesenho (sincronização chegando no meio da edição)
+  r.div={aberto:!!($('e-div-box')&&$('e-div-box').open),
+    marcados:[...document.querySelectorAll('#e-div .checkbox-item.checked')].map(e=>e.dataset.nome)};
   return r;
 }
 function restaurarRascunho(r){
@@ -2182,6 +2204,12 @@ function restaurarRascunho(r){
     if(el.tagName==='SELECT'){if([...el.options].some(o=>o.value===v))el.value=v;}
     else el.value=v;
   });
+  if(r.div){
+    if($('e-div-box'))$('e-div-box').open=r.div.aberto;
+    document.querySelectorAll('#e-div .checkbox-item').forEach(el=>{
+      if(r.div.marcados.includes(el.dataset.nome)){el.classList.add('checked');el.setAttribute('aria-checked','true');}
+    });
+  }
   if(r.foco&&$(r.foco)){
     const el=$(r.foco);el.focus();
     if(r.sel&&el.setSelectionRange){try{el.setSelectionRange(r.sel[0],r.sel[1]);}catch(e){}}
@@ -2243,12 +2271,107 @@ async function salvarEdicao(id){
   if(!desc)return toast('A descrição não pode ficar vazia','error');
   if(isNaN(valor)||valor<0)return toast('Valor inválido','error');
   const chave=`${$('e-ano').value}-${pad2($('e-mes').value)}`;
+  const divisao=[...document.querySelectorAll('#e-div .checkbox-item.checked')].map(e=>e.dataset.nome);
+  if(divisao.length===1)return toast('Para dividir, marque pelo menos 2 pessoas (ou desmarque para não dividir)','error');
+  if(divisao.length>=2){
+    const ed={desc,chave,cartao:$('e-car').value,categoria:$('e-cat').value,valor};
+    return ehRecorrente(item)&&regraDe(item)
+      ?dividirFixa(item,ed,divisao)
+      :dividirLancamento(item,ed,divisao);
+  }
   const novo={...item,desc,mesChave:chave,responsavel:$('e-resp').value,
     cartao:$('e-car').value,categoria:$('e-cat').value,valor};
   editandoId=null;
+  if(item.parcelas>1&&!ehRecorrente(item))return editarParcelasSeguintes(item,novo);
   mutar(()=>Object.assign(item,novo),'updateLancamento',{item:paraAPI(novo)});
   toast('Atualizado','success');
   await talvezAplicarAosProximos(novo);
+}
+/* Parcelado: a edição vale para esta parcela e as seguintes (as anteriores
+   já passaram e ficam como estão). Mudou o mês? As seguintes andam o mesmo
+   tanto de meses. Mudou o valor? As seguintes ficam com o valor novo. */
+const mesesEntre=(a,b)=>{const [ya,ma]=a.split('-').map(Number),[yb,mb]=b.split('-').map(Number);return (yb*12+mb)-(ya*12+ma);};
+function editarParcelasSeguintes(item,novo){
+  const desloc=mesesEntre(item.mesChave,novo.mesChave);
+  const mudouValor=Math.abs(novo.valor-item.valor)>0.004;
+  const seguintes=S.lancamentos.filter(l=>l.grupoId===item.grupoId&&l.parcelaAtual>item.parcelaAtual);
+  const mudancas=[[item,novo],...seguintes.map(s=>[s,{...s,desc:novo.desc,responsavel:novo.responsavel,
+    cartao:novo.cartao,categoria:novo.categoria,
+    mesChave:desloc?chaveDesloc(s.mesChave,desloc):s.mesChave,
+    valor:mudouValor?novo.valor:s.valor}])];
+  // uma mutação só: um redesenho e um envio, mesmo num financiamento de 60 parcelas
+  versaoLocal++;
+  mudancas.forEach(([l,n])=>Object.assign(l,n));
+  salvarCache();
+  mudancas.forEach(([,n])=>enfileirar('updateLancamento',{item:paraAPI(n)}));
+  render();processarFila();
+  toast(seguintes.length?`Atualizado: esta parcela e as ${seguintes.length} seguintes`:'Atualizado','success');
+}
+
+/* ── DIVIDIR DEPOIS DE LANÇADO ─────────────────────────────
+   O lançamento (ou as parcelas escolhidas) vira um por pessoa, com o valor
+   repartido em centavos — o mesmo que acontece ao lançar com "Dividida".
+   Os novos entram na fila antes da exclusão dos antigos: se algo falhar
+   no meio, sobra um a mais, nunca um a menos. Funciona offline. */
+const comDiv=d=>/\(Div\.\)\s*$/.test(d)?d:d+' (Div.)';
+function dividirLancamento(item,ed,pessoas){
+  // parcelado: divide esta parcela e as seguintes (mesma regra da edição)
+  const alvo=item.parcelas>1
+    ?S.lancamentos.filter(l=>l.grupoId===item.grupoId&&l.parcelaAtual>=item.parcelaAtual)
+    :[item];
+  const desloc=mesesEntre(item.mesChave,ed.chave), mudouValor=Math.abs(ed.valor-item.valor)>0.004;
+  const novos=[];
+  alvo.forEach(t=>{
+    // o item editado leva tudo o que foi mudado; as outras parcelas, o que vale para a compra inteira
+    const base=t.id===item.id
+      ?{...t,desc:ed.desc,mesChave:ed.chave,cartao:ed.cartao,categoria:ed.categoria,valor:ed.valor}
+      :{...t,desc:ed.desc,cartao:ed.cartao,categoria:ed.categoria,
+         mesChave:desloc?chaveDesloc(t.mesChave,desloc):t.mesChave,valor:mudouValor?ed.valor:t.valor};
+    const cotas=dividirValor(base.valor,pessoas.length);
+    pessoas.forEach((nome,i)=>novos.push({...base,id:uid(),desc:comDiv(base.desc),responsavel:nome,
+      valor:cotas[i],grupoId:`${t.grupoId}-D${i+1}`}));
+  });
+  const ids=alvo.map(t=>t.id), idSet=new Set(ids);
+  editandoId=null;versaoLocal++;
+  S.lancamentos=S.lancamentos.filter(l=>!idSet.has(l.id)).concat(novos);
+  salvarCache();
+  enfileirar('addLancamentos',{itens:novos.map(paraAPI)});
+  enfileirar('deleteLancamentos',{ids});
+  render();processarFila();
+  toast(alvo.length>1
+    ?`${alvo.length} parcelas divididas entre ${pessoas.length} pessoas`
+    :`Dividido entre ${pessoas.length} pessoas`,'success');
+}
+/* Cobrança fixa: quem já paga continua com a regra (agora com a sua parte);
+   as outras pessoas ganham uma cobrança fixa própria a partir deste mês — o
+   servidor cria os lançamentos delas. Meses já gerados depois deste também
+   são ajustados para a parte de quem ficou, para nada contar em dobro. */
+async function dividirFixa(item,ed,pessoas){
+  const r=regraDe(item);
+  if(!exigirOnline())return;
+  const dono=pessoas.includes(item.responsavel)?item.responsavel:pessoas[0];
+  const ordem=[dono,...pessoas.filter(p=>p!==dono)];
+  const cotasMes=dividirValor(ed.valor,ordem.length), cotasRegra=dividirValor(r.valor,ordem.length);
+  const desc=comDiv(ed.desc);
+  let ok=false;
+  await comOcupado(async()=>{
+    try{
+      await api('updateRecorrente',recParaAPI({...r,desc,valor:cotasRegra[0],responsavel:dono,cartao:ed.cartao,categoria:ed.categoria}));
+      await api('addRecorrentes',{itens:ordem.slice(1).map((nome,i)=>recParaAPI({...r,id:uid(),desc,valor:cotasRegra[i+1],
+        responsavel:nome,cartao:ed.cartao,categoria:ed.categoria,mesInicio:item.mesChave,ultimoMes:''}))});
+      ok=true;
+    }catch(e){if(!e.sessao)toast(erroAmigavel(e),'error');}
+  });
+  if(!ok)return;
+  editandoId=null;
+  const ajustes=S.lancamentos.filter(l=>l.grupoId===item.grupoId&&(l.id===item.id||l.mesChave>item.mesChave));
+  ajustes.forEach(l=>{
+    const novo={...l,desc,responsavel:dono,cartao:ed.cartao,categoria:ed.categoria,
+      valor:l.id===item.id?cotasMes[0]:cotasRegra[0]};
+    mutar(()=>Object.assign(l,novo),'updateLancamento',{item:paraAPI(novo)});
+  });
+  await recarregar({forcar:true});
+  toast(`Cobrança fixa dividida entre ${ordem.length} pessoas — deste mês em diante`,'success');
 }
 async function excluir(id){
   const l=S.lancamentos.find(x=>x.id===id);if(!l)return;
