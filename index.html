@@ -30,6 +30,13 @@
   --green:#4ade80;--green-dim:rgba(74,222,128,0.1);
   --red:#f87171;--red-dim:rgba(248,113,113,0.1);
   --amber:#fbbf24;
+  /* Cores de dado dos gráficos — validadas contra o fundo dos cartões
+     (#161616): faixa de luminosidade, separação para daltonismo e
+     contraste. O dourado da marca (#c9a84c) é claro demais para série;
+     a série usa um passo abaixo. Texto nunca usa estas cores. */
+  --s-gasto:#b08d34;--s-receita:#3987e5;--s-outros:#6b6b6b;
+  --st-bom:#0ca30c;--st-alerta:#fab219;--st-critico:#d03b3b;
+  --grade:#262626;--eixo:#3a3a3a;
   --text:#e8e8e8;
   --text2:#9a9a9a;--text3:#7a7a7a;--muted:#6e6e6e;
   --serif:'Playfair Display',Georgia,serif;
@@ -179,28 +186,114 @@ select option{background:#1c1c1c}
 /* ── PAGO x PENDENTE ──
    Duas faixas na mesma barra, com 2px de fundo entre elas e o valor escrito
    ao lado: a diferença nunca depende só da cor. */
-.barra-pag{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden;background:var(--surface);border:1px solid var(--border)}
-.barra-pag span{display:block;height:100%}
-.seg-pago{background:var(--green)}
-.seg-pendente{background:var(--amber)}
-.legenda-pag{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-family:var(--mono);font-size:.72rem;color:var(--text2)}
-.legenda-pag b{color:var(--text);font-weight:500}
-.legenda-pag i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:7px;vertical-align:baseline}
-.nota{font-family:var(--mono);font-size:.69rem;color:var(--text3);line-height:1.6;margin-top:12px}
+/* Medidor fino de pago x pendente: 8px, pontas arredondadas, 2px de fundo
+   entre as partes. O valor vem escrito ao lado — nunca só a cor. */
+.barra-pag{display:flex;gap:2px;height:8px;margin-top:14px}
+.barra-pag span{display:block;height:100%;border-radius:4px;min-width:0}
+.seg-pago{background:var(--st-bom)}
+.seg-pendente{background:var(--st-alerta)}
+.legenda-pag{display:flex;gap:6px 14px;flex-wrap:wrap;margin-top:12px;font-family:var(--mono);font-size:.66rem;color:var(--text3)}
+.legenda-pag b{color:var(--text2);font-weight:500}
+.legenda-pag i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:6px}
+.nota{font-family:var(--mono);font-size:.68rem;color:var(--text3);line-height:1.6;margin-top:12px}
 .nota:empty{display:none}
-.bar-fill.ok{background:linear-gradient(90deg,var(--green),#86efac)}
-.bar-fill.atencao{background:linear-gradient(90deg,var(--amber),#fcd34d)}
-.bar-fill.estourou{background:linear-gradient(90deg,var(--red),#fca5a5)}
-.chart-sub{grid-column:1/-1;font-family:var(--mono);font-size:.63rem;color:var(--text3);margin-top:-2px}
+.chart-sub{grid-column:1/-1;font-family:var(--mono);font-size:.63rem;color:var(--text3);margin-top:-1px}
+.chart-sub.sobe{color:var(--red)}.chart-sub.desce{color:var(--green)}
 
-.chart-wrap{display:flex;flex-direction:column;gap:11px}
-.chart-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+/* Barras horizontais: 10px, ponta de dado arredondada, base reta. */
+.chart-wrap{display:flex;flex-direction:column;gap:13px}
+.chart-row{display:grid;grid-template-columns:1fr auto;gap:5px 12px;align-items:center}
 .chart-label{font-size:0.76rem;color:var(--text2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.chart-val{text-align:right;font-size:0.76rem;font-family:var(--mono);font-weight:500}
-.bar-track{grid-column:1/-1;background:var(--surface);border-radius:2px;height:5px;overflow:hidden;border:1px solid var(--border)}
-.bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .6s cubic-bezier(.4,0,.2,1)}
-.chart-row.destaque .chart-label,.chart-row.destaque .chart-val{color:var(--gold2)}
+.chart-val{text-align:right;font-size:0.76rem;font-family:var(--mono);font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+.bar-track{grid-column:1/-1;background:#1f1f1f;border-radius:0 4px 4px 0;height:10px;overflow:hidden}
+.bar-fill{height:100%;background:var(--s-gasto);border-radius:0 4px 4px 0;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bar-fill.ok{background:var(--st-bom)}
+.bar-fill.atencao{background:var(--st-alerta)}
+.bar-fill.estourou{background:var(--st-critico)}
+.chart-row.destaque .chart-label{color:var(--text)}
 .chart-row:not(.destaque).com-destaque .bar-fill{opacity:.55}
+
+/* ── DASHBOARD ── */
+.dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.dash-filtro{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1 1 180px;max-width:260px}
+.dash-filtro label{font-size:0.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono)}
+.dash-filtro .inp{padding:11px 12px}
+.dash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dash-grid>.card{grid-column:1/-1;margin-bottom:0}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:15px 14px;min-width:0;display:flex;flex-direction:column}
+.kpi-lab{font-family:var(--mono);font-size:0.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.kpi-val{font-family:var(--sans);font-size:1.32rem;font-weight:600;letter-spacing:-.01em;margin-top:8px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-delta{font-family:var(--mono);font-size:.62rem;color:var(--text3);margin-top:4px;line-height:1.4}
+.kpi-delta.sobe{color:var(--red)}.kpi-delta.desce{color:var(--green)}
+.kpi-hero{grid-column:1/-1;position:relative;overflow:hidden;padding:20px 18px;
+  background:radial-gradient(120% 140% at 0% 0%,rgba(201,168,76,.10),transparent 55%),var(--card);border-color:rgba(201,168,76,.22)}
+.kpi-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+.kpi-hero.neg{background:radial-gradient(120% 140% at 0% 0%,rgba(248,113,113,.09),transparent 55%),var(--card);border-color:rgba(248,113,113,.22)}
+.kpi-hero.neg::before{background:linear-gradient(90deg,var(--red),transparent)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.kpi-top .btn{min-height:34px;padding:7px 12px}
+.hero-val{font-family:var(--sans);font-size:2.6rem;font-weight:600;letter-spacing:-.03em;line-height:1.05;margin:12px 0 14px;word-break:break-word;color:var(--text)}
+.hero-val .sinal{color:var(--green)}.kpi-hero.neg .hero-val .sinal{color:var(--red)}
+.hero-split{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--mono);font-size:.7rem;color:var(--text3)}
+.hero-split b{color:var(--text2);font-weight:500;margin-left:4px}
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:0}
+.sw.linha{height:2px;width:14px;border-radius:1px;vertical-align:3px}
+.medidor{margin-top:16px}
+.medidor-trilho{height:8px;border-radius:4px;background:#232323;overflow:hidden}
+.medidor-fill{height:100%;border-radius:4px;background:var(--s-gasto);transition:width .6s cubic-bezier(.4,0,.2,1)}
+.medidor-fill.alerta{background:var(--st-alerta)}.medidor-fill.critico{background:var(--st-critico)}
+.medidor-txt{display:flex;justify-content:space-between;gap:10px;margin-top:7px;font-family:var(--mono);font-size:.64rem;color:var(--text3)}
+.medidor-txt b{color:var(--text2);font-weight:500}
+.spark{margin-top:auto;padding-top:10px;height:38px}
+.spark svg{display:block;width:100%;height:28px;overflow:visible}
+
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin-bottom:12px}
+.card-head .card-label{margin-bottom:0}
+.legenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:var(--mono);font-size:.64rem;color:var(--text2)}
+.grafico{position:relative;width:100%}
+.grafico svg{display:block;width:100%;height:auto;overflow:visible}
+.grafico text{font-family:var(--mono);font-size:10px;fill:var(--text3)}
+.grafico text.forte{fill:var(--text);font-weight:500}
+.grafico text.valor{fill:var(--text2);font-size:10.5px}
+.grafico .col .barra{transition:opacity .15s}
+.grafico .col .barra.secundaria{opacity:.62}
+.grafico .col .barra.futura{opacity:.32}
+.grafico .col:hover .barra,.grafico .col:focus .barra{opacity:1}
+.grafico .col:hover .hit,.grafico .col:focus .hit{fill:rgba(255,255,255,.035)}
+.grafico .col{outline:none;cursor:default}
+.grafico .col:focus-visible .hit{stroke:var(--gold);stroke-width:1}
+details.tabela-dados{margin-top:12px}
+details.tabela-dados>summary{cursor:pointer;font-family:var(--mono);font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);list-style:none;padding:6px 0}
+details.tabela-dados>summary::-webkit-details-marker{display:none}
+details.tabela-dados>summary::before{content:'▸ ';color:var(--gold)}
+details.tabela-dados[open]>summary::before{content:'▾ '}
+.tabela{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.7rem;margin-top:6px}
+.tabela th{text-align:left;color:var(--text3);font-weight:400;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border)}
+.tabela td{padding:7px 8px;border-bottom:1px solid #1d1d1d;color:var(--text2)}
+.tabela td.num,.tabela th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabela tr.atual td{color:var(--text)}
+.tabela-scroll{overflow-x:auto}
+
+/* Barra segmentada (parte de um todo): 28px, cantos de 4px, 2px de fundo
+   entre as partes; a legenda abaixo também é a tabela dos valores. */
+.seg-bar{display:flex;gap:2px;height:28px}
+.seg-bar span{display:flex;align-items:center;padding:0 8px;border-radius:4px;min-width:3px;
+  font-family:var(--mono);font-size:.66rem;font-weight:500;color:#fff;white-space:nowrap;overflow:visible;outline:none}
+.seg-bar span:focus-visible{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--gold)}
+.seg-leg{list-style:none;display:flex;flex-direction:column;gap:2px;margin-top:14px}
+.seg-leg li{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:7px 2px;border-bottom:1px solid #1d1d1d;font-family:var(--mono);font-size:.74rem}
+.seg-leg li:last-child{border-bottom:none}
+.seg-leg .sw{margin:0}
+.seg-leg .nome{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg-leg .v{color:var(--text);font-variant-numeric:tabular-nums}
+.seg-leg .p{color:var(--text3);font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+
+#dash-tip{position:fixed;z-index:9000;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;
+  background:#0d0d0d;border:1px solid var(--border2);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:.7rem;
+  color:var(--text2);line-height:1.6;white-space:pre;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:260px}
+#dash-tip.show{opacity:1;transform:none}
+#dash-tip b{color:var(--text);font-weight:500}
+@media (prefers-reduced-motion:reduce){.bar-fill,.medidor-fill,#dash-tip,.page{transition:none;animation:none}}
 
 /* ── FORMULÁRIO ── */
 .form-grid{display:grid;grid-template-columns:1fr;gap:16px}
@@ -354,7 +447,23 @@ details.filtros-box[open]>summary::after{content:'−'}
   .nav-btn.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:var(--gold);box-shadow:0 0 8px var(--gold)}
   .sync-label{display:inline}
   .tabbar{display:none}
-  .container{max-width:1100px;margin:0 auto;padding:34px 24px 60px;position:relative;z-index:1}
+  .container{max-width:1200px;margin:0 auto;padding:34px 24px 60px;position:relative;z-index:1}
+  /* Dashboard: 12 colunas. Saldo grande à esquerda, 4 indicadores 2×2 à
+     direita; abaixo, gráfico de evolução largo + categorias ao lado. */
+  .dash-grid{grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+  .dash-grid>.card{padding:22px 24px}
+  .kpi{grid-column:span 3;padding:18px 20px}
+  .kpi.kpi-hero{grid-column:span 6;grid-row:span 2;padding:26px 28px}
+  .kpi-val{font-size:1.6rem}
+  .hero-val{font-size:3.4rem}
+  .dash-grid>.span-8{grid-column:span 8}
+  .dash-grid>.span-6{grid-column:span 6}
+  .dash-grid>.span-4{grid-column:span 4}
+  /* nos cartões do painel a barra vai embaixo do rótulo, na largura toda */
+  .dash-grid .chart-row{grid-template-columns:1fr auto}
+  .dash-grid .bar-track{grid-column:1/-1}
+  .dash-head{align-items:flex-end}
+  .dash-head .section-title{white-space:nowrap}
   .section-header{display:flex;align-items:baseline;gap:14px;margin-bottom:26px;padding-bottom:18px;border-bottom:1px solid var(--border)}
   .section-title{font-size:1.6rem}
   .section-sub{margin-top:0}
@@ -492,70 +601,106 @@ details.filtros-box[open]>summary::after{content:'−'}
 
 <!-- RESUMO -->
 <section id="resumo" class="page active">
-  <div class="section-header">
-    <div><div class="section-title">Painel</div><div class="section-sub">Visão do mês</div></div>
-  </div>
-  <div class="field" style="margin-bottom:14px">
-    <label for="resumo-mes-filtro">Mês</label>
-    <select id="resumo-mes-filtro" class="inp"><option value="atual">Mês atual</option></select>
+  <!-- Um filtro só, acima de tudo: todos os blocos mostram o mesmo mês. -->
+  <div class="section-header dash-head">
+    <div><div class="section-title">Painel</div><div class="section-sub" id="dash-sub">Visão do mês</div></div>
+    <div class="dash-filtro">
+      <label for="resumo-mes-filtro">Mês</label>
+      <select id="resumo-mes-filtro" class="inp"><option value="atual">Mês atual</option></select>
+    </div>
   </div>
 
-  <div class="saldo-card" id="saldo-card">
-    <div class="saldo-accent" id="saldo-accent"></div>
-    <div style="min-width:0">
-      <div class="eyebrow" id="saldo-eyebrow">Saldo do mês</div>
-      <div class="saldo-valor" id="dash-saldo">R$ 0,00</div>
-      <div class="saldo-linha">
-        <span>Sua receita <b id="dash-receita">R$ 0,00</b></span>
-        <span>Seus gastos <b id="dash-meu">R$ 0,00</b></span>
-        <span>De terceiros <b id="dash-outros">R$ 0,00</b></span>
+  <div class="dash-grid">
+    <!-- Saldo: o número que o painel destaca -->
+    <div class="kpi kpi-hero" id="saldo-card">
+      <div class="kpi-top">
+        <span class="kpi-lab" id="saldo-eyebrow">Saldo do mês</span>
+        <button class="btn btn-ghost btn-sm" id="btn-abrir-receita">+ Receita</button>
       </div>
+      <div class="hero-val" id="dash-saldo">R$ 0,00</div>
+      <div class="hero-split">
+        <span><i class="sw" style="background:var(--s-receita)"></i>Sua receita <b id="dash-receita">R$ 0,00</b></span>
+        <span><i class="sw" style="background:var(--s-gasto)"></i>Seus gastos <b id="dash-meu">R$ 0,00</b></span>
+        <span><i class="sw" style="background:var(--s-outros)"></i>De terceiros <b id="dash-outros">R$ 0,00</b></span>
+      </div>
+      <div class="medidor" id="medidor-saldo"></div>
       <div class="nota" id="nota-saldo"></div>
     </div>
-    <button class="btn btn-ghost btn-sm" id="btn-abrir-receita" style="margin-top:14px;align-self:flex-start">+ Receita do mês</button>
-  </div>
 
-  <div class="card">
-    <div class="card-label">Pagamento do mês</div>
-    <div class="barra-pag" id="barra-pag" role="img" aria-label="Proporção entre pago e pendente"></div>
-    <div class="legenda-pag" id="legenda-pag"></div>
-    <div class="mini-row" style="margin:16px 0 0">
-      <div class="mini"><div class="mini-lab">Total do mês</div><div class="mini-val" id="dash-total">R$ 0</div><div class="mini-var" id="var-total"></div></div>
-      <div class="mini"><div class="mini-lab">Pago</div><div class="mini-val" id="dash-pago">R$ 0</div><div class="mini-var" id="var-pago"></div></div>
-      <div class="mini"><div class="mini-lab">Pendente</div><div class="mini-val" id="dash-pendente">R$ 0</div><div class="mini-var" id="var-pendente"></div></div>
+    <div class="kpi">
+      <div class="kpi-lab">Gastos do mês</div>
+      <div class="kpi-val" id="dash-total">R$ 0</div>
+      <div class="kpi-delta" id="var-total"></div>
+      <div class="spark" id="spark-total"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lab">Já pago</div>
+      <div class="kpi-val" id="dash-pago">R$ 0</div>
+      <div class="kpi-delta" id="var-pago"></div>
+      <div class="barra-pag" id="barra-pag" role="img" aria-label="Proporção entre pago e pendente"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lab">Falta pagar</div>
+      <div class="kpi-val" id="dash-pendente">R$ 0</div>
+      <div class="kpi-delta" id="var-pendente"></div>
+      <div class="legenda-pag" id="legenda-pag"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lab">Já comprometido</div>
+      <div class="kpi-val" id="dash-futuro">R$ 0</div>
+      <div class="kpi-delta" id="var-futuro"></div>
+    </div>
+
+    <div class="card span-8">
+      <div class="card-head">
+        <div class="card-label">Evolução — gastos e receita</div>
+        <div class="legenda" aria-hidden="true">
+          <span><i class="sw" style="background:var(--s-gasto)"></i>Seus gastos</span>
+          <span><i class="sw" style="background:var(--s-outros)"></i>De terceiros</span>
+          <span><i class="sw linha" style="background:var(--s-receita)"></i>Sua receita</span>
+        </div>
+      </div>
+      <div class="grafico" id="chart-evol"></div>
+      <details class="tabela-dados"><summary>Ver em tabela</summary><div id="tabela-evol"></div></details>
+    </div>
+
+    <div class="card span-4">
+      <div class="card-label">Por categoria</div>
+      <div class="chart-wrap" id="chart-cat"></div>
+      <div class="nota" id="nota-cat"></div>
+    </div>
+
+    <div class="card span-6">
+      <div class="card-label">A pagar neste mês</div>
+      <div class="settings-list" id="lista-pagar"></div>
+    </div>
+
+    <div class="card span-6">
+      <div class="card-label">Orçamento por categoria</div>
+      <div class="chart-wrap" id="chart-orcamento"></div>
+    </div>
+
+    <div class="card span-6">
+      <div class="card-label">Por cartão</div>
+      <div id="seg-cartao"></div>
+    </div>
+
+    <div class="card span-6">
+      <div class="card-label">Por pessoa</div>
+      <div id="seg-pessoa"></div>
+    </div>
+
+    <div class="card span-6">
+      <div class="card-label">Próximos meses — parcelas já feitas</div>
+      <div class="grafico" id="chart-futuro"></div>
+      <div class="nota" id="nota-futuro"></div>
+    </div>
+
+    <div class="card span-6">
+      <div class="card-label">Maiores gastos do mês</div>
+      <div class="settings-list" id="lista-top"></div>
     </div>
   </div>
-
-  <div class="card">
-    <div class="card-label">A pagar neste mês</div>
-    <div class="settings-list" id="lista-pagar"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">Onde você está gastando mais</div>
-    <div class="chart-wrap" id="chart-cat"></div>
-    <div class="nota" id="nota-cat"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">Orçamento por categoria</div>
-    <div class="chart-wrap" id="chart-orcamento"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">Maiores gastos do mês</div>
-    <div class="settings-list" id="lista-top"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">Já comprometido nos próximos meses</div>
-    <div class="chart-wrap" id="chart-futuro"></div>
-    <div class="nota" id="nota-futuro"></div>
-  </div>
-
-  <div class="card"><div class="card-label">Por cartão</div><div class="chart-wrap" id="chart-cartao"></div></div>
-  <div class="card"><div class="card-label">Por pessoa</div><div class="chart-wrap" id="chart-pessoa"></div></div>
-  <div class="card"><div class="card-label">Evolução mensal</div><div class="chart-wrap" id="chart-mes"></div></div>
 </section>
 
 <!-- LANÇAR -->
@@ -594,6 +739,7 @@ details.filtros-box[open]>summary::after{content:'−'}
         <label for="categoria">Categoria *</label>
         <select id="categoria" class="inp"><option value="" disabled selected>Selecione...</option></select>
         <span class="error-msg">Selecione a categoria</span>
+        <span class="field-hint" id="hint-orcamento" role="status" style="display:none;color:var(--amber)"></span>
       </div>
       <div class="field full">
         <label for="mes_referencia">Mês de referência *</label>
@@ -711,7 +857,7 @@ details.filtros-box[open]>summary::after{content:'−'}
       </div>
     </details>
     <div class="busca-row">
-      <input type="search" class="inp" id="f_busca" placeholder="Buscar descrição..." aria-label="Buscar">
+      <input type="search" class="inp" id="f_busca" placeholder="Buscar descrição, categoria, cartão ou valor..." aria-label="Buscar">
       <select class="inp" id="f_ordem" style="max-width:150px" aria-label="Ordem">
         <option value="mes_desc">Recentes</option>
         <option value="mes_asc">Antigos</option>
@@ -819,6 +965,7 @@ details.filtros-box[open]>summary::after{content:'−'}
     <div class="modal-field">
       <label for="receita-valor">Valor (R$)</label>
       <input type="text" id="receita-valor" class="inp" placeholder="0,00" inputmode="decimal" autocomplete="off" data-dinheiro>
+      <div class="field-hint" id="receita-sugestao" style="display:none;margin-top:6px"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:6px">
       <button class="btn btn-primary" style="flex:1" id="btn-salvar-receita">Salvar</button>
@@ -1338,41 +1485,42 @@ function renderResumo(){
   const A=agregado(chave), B=agregado(anterior);
   const rotAnt=chaveCurta(anterior);
   const varTxt=(at,ant,gastoRuim)=>variacao(at,ant,rotAnt,gastoRuim);
+  $('dash-sub').textContent=chaveExib(chave);
 
-  // ── saldo
+  // ── saldo (o número em destaque) — o sinal leva a cor; o valor fica em texto
   $('saldo-eyebrow').textContent='Saldo de '+chaveExib(chave);
-  $('dash-saldo').textContent=fmt(A.saldo);
-  $('dash-saldo').style.color=A.saldo>=0?'var(--green)':'var(--red)';
-  $('saldo-accent').style.background=`linear-gradient(90deg,${A.saldo>=0?'var(--green)':'var(--red)'},transparent)`;
-  $('saldo-card').style.borderColor=A.saldo>=0?'rgba(74,222,128,.25)':'rgba(248,113,113,.25)';
+  const neg=A.saldo<0;
+  $('saldo-card').classList.toggle('neg',neg);
+  setHtml($('dash-saldo'),`<span class="sinal">${neg?'−':'+'}</span>${esc(fmt(Math.abs(A.saldo)))}`);
   $('dash-receita').textContent=fmt(A.receita);
   $('dash-meu').textContent=fmt(A.meu);
   $('dash-outros').textContent=fmt(A.terceiros);
+  renderMedidorSaldo(A);
   $('nota-saldo').textContent=pessoaPrincipal
-    ? `Saldo = sua receita − seus gastos (${pessoaPrincipal}). Os ${fmtCurto(A.terceiros)} de terceiros ficam fora da conta.`
+    ? (A.receita?'':'Sem receita lançada neste mês — toque em "+ Receita". ')+
+      `Os ${fmtCurto(A.terceiros)} de terceiros não entram no saldo.`
     : 'Escolha a "pessoa principal" em Ajustes para o saldo considerar só os seus gastos.';
 
-  // ── pago x pendente
-  const totalBarra=A.total||1;
-  const pctPago=A.pago/totalBarra*100;
+  // ── indicadores
+  const pctPago=A.total?A.pago/A.total*100:0;
   setHtml($('barra-pag'),A.total
-    ? `<span class="seg-pago" style="width:${pctPago.toFixed(1)}%"></span><span class="seg-pendente" style="width:${(100-pctPago).toFixed(1)}%"></span>`
-    : '<span class="seg-pendente" style="width:100%;opacity:.25"></span>');
+    ? (A.pago?`<span class="seg-pago" style="flex:${A.pago}"></span>`:'')+(A.pendente?`<span class="seg-pendente" style="flex:${A.pendente}"></span>`:'')
+    : '<span style="flex:1;background:#232323"></span>');
+  $('barra-pag').setAttribute('aria-label',A.total?`Pago ${fmt(A.pago)} (${Math.round(pctPago)}%), pendente ${fmt(A.pendente)}`:'Nenhum lançamento');
   setHtml($('legenda-pag'),A.total
-    ? `<span><i class="seg-pago"></i>Pago <b>${fmt(A.pago)}</b> · ${Math.round(pctPago)}%</span>
-       <span><i class="seg-pendente"></i>Pendente <b>${fmt(A.pendente)}</b> · ${100-Math.round(pctPago)}%</span>`
-    : '<span>Nenhum lançamento neste mês.</span>');
-  $('dash-total').textContent=fmtCurto(A.total);
-  $('dash-pago').textContent=fmtCurto(A.pago);
-  $('dash-pendente').textContent=fmtCurto(A.pendente);
-  $('dash-pago').style.color=A.pago?'var(--green)':'';
-  $('dash-pendente').style.color=A.pendente?'var(--amber)':'';
+    ? `<span><i class="seg-pago"></i>Pago ${Math.round(pctPago)}%</span><span><i class="seg-pendente"></i>Pendente ${100-Math.round(pctPago)}%</span>`
+    : '');
+  $('dash-total').textContent=fmt(A.total);
+  $('dash-pago').textContent=fmt(A.pago);
+  $('dash-pendente').textContent=fmt(A.pendente);
   const vt=varTxt(A.total,B.total,true);
-  $('var-total').textContent=vt.txt;$('var-total').className='mini-var '+vt.cls;
-  $('var-pago').textContent=A.total?`${Math.round(pctPago)}% do mês`:'';
-  $('var-pago').className='mini-var';
-  $('var-pendente').textContent=A.pendente?`${A.itens.filter(l=>!l.pago).length} em aberto`:'tudo pago';
-  $('var-pendente').className='mini-var'+(A.pendente?'':' desce');
+  $('var-total').textContent=vt.txt||'—';$('var-total').className='kpi-delta '+vt.cls;
+  $('var-pago').textContent=A.total?`${Math.round(pctPago)}% do mês`:'nada lançado';
+  $('var-pago').className='kpi-delta';
+  const abertos=A.itens.filter(l=>!l.pago).length;
+  $('var-pendente').textContent=A.pendente?`${abertos} lançamento(s) em aberto`:(A.total?'✓ tudo pago':'—');
+  $('var-pendente').className='kpi-delta'+(A.pendente||!A.total?'':' desce');
+  sparkline('spark-total',Array.from({length:6},(_,i)=>{const k=chaveDesloc(chave,i-5);return[k,agregado(k).total];}));
 
   renderPagar(A);
 
@@ -1391,23 +1539,202 @@ function renderResumo(){
   });
   $('nota-cat').textContent=cats.length
     ? (maiorAlta
-        ? `Maior gasto: ${cats[0][0]} (${fmt(cats[0][1])}, ${Math.round(cats[0][1]/totalBarra*100)}% do mês). Quem mais subiu contra ${rotAnt}: ${maiorAlta.k}, ${fmt(maiorAlta.delta)} a mais.`
-        : `Maior gasto: ${cats[0][0]} (${fmt(cats[0][1])}). Nada subiu em relação a ${rotAnt}.`)
+        ? `${cats[0][0]} é ${Math.round(cats[0][1]/(A.total||1)*100)}% do mês. Mais subiu contra ${rotAnt}: ${maiorAlta.k} (+${fmt(maiorAlta.delta)}).`
+        : `${cats[0][0]} é ${Math.round(cats[0][1]/(A.total||1)*100)}% do mês. Nada subiu em relação a ${rotAnt}.`)
     : '';
 
   renderOrcamento(A);
   renderTop(A);
   renderFuturo(chave);
 
-  chart('chart-cartao',Object.entries(A.porCartao).sort((a,b)=>b[1]-a[1]),'Nenhum gasto neste mês.');
-  chart('chart-pessoa',Object.entries(A.porPessoa).sort((a,b)=>b[1]-a[1]),'Nenhum gasto neste mês.');
-
-  /* Evolução: 8 meses antes e 3 depois do mês escolhido. */
-  const porMes={};S.lancamentos.forEach(l=>{porMes[l.mesChave]=(porMes[l.mesChave]||0)+l.valor;});
-  const janela=[];
-  for(let off=-8;off<=3;off++)janela.push(chaveDesloc(chave,off));
-  chart('chart-mes',janela.filter(k=>porMes[k]).map(k=>[chaveCurta(k),porMes[k],k===chave]),'Nenhum lançamento nesse período.');
+  segmentos('seg-cartao',A.porCartao,S.cartoes,'Nenhum gasto neste mês.');
+  segmentos('seg-pessoa',A.porPessoa,S.pessoas,'Nenhum gasto neste mês.');
+  graficoEvolucao(chave);
 }
+
+/* ═══════════════ GRÁFICOS DO PAINEL ═══════════════
+   SVG desenhado aqui, sem biblioteca. Regras: uma escala só; marcas finas
+   (colunas até 24px, ponta arredondada, base reta); grade em linha fina;
+   texto sempre nas cores de texto, nunca na cor da série; todo valor
+   também aparece escrito (rótulo, legenda ou tabela) — a dica ao passar
+   o mouse só complementa. */
+
+/* 8 cores categóricas na ordem validada (passo escuro). Cada cartão/pessoa
+   fica com a cor da sua posição no cadastro: a cor segue a entidade, não a
+   posição no ranking do mês. Da 8ª em diante, e "Sem cartão", vão de cinza. */
+const CORES_CAT=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+const COR_OUTROS='#6b6b6b';
+
+/* Valor compacto para eixo: 0 · 500 · 1 mil · 2,5 mil */
+const fmtEixo=v=>v>=1000?(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':String(Math.round(v));
+function ticksBonitos(max,alvo=4){
+  if(!(max>0))return[0,1];
+  const bruto=max/alvo, pot=Math.pow(10,Math.floor(Math.log10(bruto))), n=bruto/pot;
+  const passo=(n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*pot;
+  const t=[];for(let v=0;v<max+passo*0.001;v+=passo)t.push(v);
+  if(t[t.length-1]<max)t.push(t[t.length-1]+passo);
+  return t;
+}
+const mesCurto=k=>{const [a,m]=k.split('-').map(Number);return MESES[m-1].slice(0,3)+(m===1?` ${String(a).slice(2)}`:'');};
+/* retângulo com os dois cantos de cima arredondados (ponta do dado) e base reta */
+function colunaPath(x,y,w,h,r){
+  if(h<=0)return'';r=Math.min(r,h,w/2);
+  return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`;
+}
+
+/* Colunas empilhadas por mês + linha opcional, numa escala só (tudo é R$).
+   meses: [{k, partes:[{v,cor}], linha, tip, estado:'atual'|'futuro'|''}] */
+function colunas(el,meses,{altura=230,corLinha=null,rotular='atual'}={}){
+  const W=Math.max(280,Math.round(el.clientWidth||600)), H=altura;
+  const pl=46, pr=10, pt=22, pb=26, iw=W-pl-pr, ih=H-pt-pb;
+  const totais=meses.map(m=>m.partes.reduce((s,p)=>s+p.v,0));
+  const maxV=Math.max(1,...totais,...meses.map(m=>m.linha||0));
+  const ticks=ticksBonitos(maxV), topo=ticks[ticks.length-1];
+  const y=v=>pt+ih-(v/topo)*ih, band=iw/meses.length, bw=Math.min(24,Math.max(6,band*0.58));
+  // rótulo seletivo: só o mês escolhido (ou só o maior) ganha o valor escrito
+  const iMax=totais.indexOf(Math.max(...totais));
+  const rotula=i=>totais[i]>0&&(rotular==='max'?i===iMax:meses[i].estado==='atual');
+  let s='';
+  ticks.forEach(t=>{
+    s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="${t?'var(--grade)':'var(--eixo)'}" stroke-width="1"/>`;
+    s+=`<text x="${pl-8}" y="${(y(t)+3.5).toFixed(1)}" text-anchor="end">${fmtEixo(t)}</text>`;
+  });
+  meses.forEach((m,i)=>{
+    const x0=pl+i*band, x=x0+(band-bw)/2, cls=m.estado==='futuro'?' futura':(m.estado==='atual'||m.estado==='cheio'?'':' secundaria');
+    let g=`<rect class="hit" x="${x0.toFixed(1)}" y="${pt}" width="${band.toFixed(1)}" height="${ih}" rx="4" fill="transparent"/>`;
+    // empilha de baixo para cima com 2px de fundo entre as partes; só a de cima é arredondada
+    let base=0;const vis=m.partes.filter(p=>p.v>0);
+    vis.forEach((p,j)=>{
+      const yTop=y(base+p.v), yBase=y(base)-(j?2:0), h=yBase-yTop;
+      if(h>0.5)g+=j===vis.length-1
+        ?`<path class="barra${cls}" d="${colunaPath(x,yTop,bw,h,4)}" fill="${p.cor}"/>`
+        :`<rect class="barra${cls}" x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${p.cor}"/>`;
+      base+=p.v;
+    });
+    if(rotula(i))
+      g+=`<text class="valor" x="${(x+bw/2).toFixed(1)}" y="${(y(totais[i])-7).toFixed(1)}" text-anchor="middle">${esc(fmtEixo(totais[i]))}</text>`;
+    // sem espaço para todos os nomes: um sim, um não (o mês escolhido sempre)
+    const iAtual=Math.max(0,meses.findIndex(x=>x.estado==='atual'));
+    if(band>=34||m.estado==='atual'||(i-iAtual)%2===0)
+      g+=`<text class="${m.estado==='atual'?'forte':''}" x="${(x0+band/2).toFixed(1)}" y="${H-8}" text-anchor="middle">${esc(mesCurto(m.k))}</text>`;
+    s+=`<g class="col" tabindex="0" role="img" aria-label="${esc(m.tip.replace(/\n/g,', '))}" data-tip="${esc(m.tip)}">${g}</g>`;
+  });
+  // linha (receita): só liga meses vizinhos que têm valor; pontos com anel no fundo do cartão
+  if(corLinha){
+    let seg=[],trechos=[];
+    meses.forEach((m,i)=>{
+      if(m.linha!=null){seg.push([pl+i*band+band/2,y(m.linha)]);}
+      else if(seg.length){trechos.push(seg);seg=[];}
+    });
+    if(seg.length)trechos.push(seg);
+    trechos.forEach(t=>{
+      if(t.length>1)s+=`<polyline points="${t.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${corLinha}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+      t.forEach(p=>{s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4" fill="${corLinha}" stroke="var(--card)" stroke-width="2" pointer-events="none"/>`;});
+    });
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group">${s}</svg>`;
+}
+
+/* Evolução: 8 meses antes e 3 depois do escolhido (no celular, 5 e 2). Colunas = gastos do mês
+   (seus + de terceiros, empilhados); linha = sua receita. */
+function graficoEvolucao(chave){
+  const el=$('chart-evol');
+  const hoje=chaveHoje(), meses=[], estreito=(el.clientWidth||600)<480;
+  for(let off=estreito?-5:-8;off<=(estreito?2:3);off++){
+    const k=chaveDesloc(chave,off), a=agregado(k);
+    const meu=pessoaPrincipal?a.meu:a.total, outros=pessoaPrincipal?a.terceiros:0;
+    const rec=S.receitas[k];
+    meses.push({k,meu,outros,rec,
+      partes:[{v:meu,cor:'var(--s-gasto)'},{v:outros,cor:'var(--s-outros)'}],
+      linha:rec!=null?rec:null,
+      estado:k===chave?'atual':(k>hoje?'futuro':''),
+      tip:`${chaveExib(k)}${k>hoje?' (previsto)':''}\nSeus gastos: ${fmt(meu)}\nDe terceiros: ${fmt(outros)}\nSua receita: ${rec!=null?fmt(rec):'—'}`+
+          (rec!=null?`\nSaldo: ${fmt(rec-meu)}`:'')});
+  }
+  const vazio=meses.every(m=>!m.meu&&!m.outros&&m.rec==null);
+  setHtml(el,vazio
+    ?'<div class="empty-state"><span class="icon">◦</span><p>Nenhum lançamento nesse período.</p></div>'
+    :colunas(el,meses,{corLinha:'var(--s-receita)',altura:(el.clientWidth||0)>560?330:230}));
+  // a mesma informação em tabela (para leitor de tela e para quem prefere números)
+  setHtml($('tabela-evol'),`<div class="tabela-scroll"><table class="tabela"><thead><tr><th>Mês</th><th class="num">Seus gastos</th><th class="num">Terceiros</th><th class="num">Receita</th><th class="num">Saldo</th></tr></thead><tbody>`+
+    meses.map(m=>`<tr class="${m.estado==='atual'?'atual':''}"><td>${esc(chaveMedia(m.k))}${m.estado==='futuro'?' ·':''}</td><td class="num">${fmt(m.meu)}</td><td class="num">${fmt(m.outros)}</td><td class="num">${m.rec!=null?fmt(m.rec):'—'}</td><td class="num">${m.rec!=null?fmt(m.rec-m.meu):'—'}</td></tr>`).join('')+
+    '</tbody></table></div>');
+}
+
+/* Sparkline do indicador: linha cinza (contexto) e o mês escolhido em destaque. */
+function sparkline(elId,pares){
+  const el=$(elId);if(!el)return;
+  const vals=pares.map(p=>p[1]);
+  if(!vals.some(v=>v>0)){setHtml(el,'');return;}
+  // A sparkline mostra a tendência, não a grandeza: a escala vai do menor ao maior valor.
+  const W=100,H=28,max=Math.max(...vals)||1,min=Math.min(...vals);
+  const pts=vals.map((v,i)=>[i*(W/(vals.length-1)),H-2-((v-min)/(max-min||1))*(H-6)]);
+  const ult=pts[pts.length-1];
+  setHtml(el,`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Gastos dos últimos 6 meses: ${esc(pares.map(p=>chaveCurta(p[0])+' '+fmtCurto(p[1])).join(', '))}">
+    <polyline points="${pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#4a4a4a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${ult[0]}" cy="${ult[1].toFixed(1)}" r="3.5" fill="var(--s-gasto)" stroke="var(--card)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`);
+}
+
+/* Medidor do saldo: quanto da sua receita os seus gastos já consomem. */
+function renderMedidorSaldo(A){
+  const el=$('medidor-saldo');
+  if(!A.receita||!pessoaPrincipal){setHtml(el,'');return;}
+  const pct=A.meu/A.receita*100;
+  const cls=pct>100?'critico':(pct>=85?'alerta':'');
+  const rot=pct>100?`✕ passou ${fmt(A.meu-A.receita)} da receita`:(pct>=85?'! perto do limite da receita':`sobram ${fmt(A.receita-A.meu)}`);
+  setHtml(el,`<div class="medidor-trilho" role="img" aria-label="Seus gastos são ${Math.round(pct)}% da sua receita">
+      <div class="medidor-fill ${cls}" style="width:${Math.min(100,Math.max(pct?2:0,pct)).toFixed(1)}%"></div></div>
+    <div class="medidor-txt"><span><b>${Math.round(pct)}%</b> da receita usada</span><span>${esc(rot)}</span></div>`);
+}
+
+/* Parte de um todo: barra segmentada de 28px + lista (que é também a
+   tabela dos valores). Até 6 partes; o resto vira "Outros". */
+function segmentos(elId,mapa,cadastro,vazio){
+  const el=$(elId);
+  let itens=Object.entries(mapa).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
+  const total=itens.reduce((s,e)=>s+e[1],0);
+  if(!total){setHtml(el,`<div class="empty-state"><span class="icon">◦</span><p>${esc(vazio)}</p></div>`);return;}
+  if(itens.length>6){const resto=itens.slice(5).reduce((s,e)=>s+e[1],0);itens=itens.slice(0,5).concat([['Outros',resto]]);}
+  const cor=nome=>{const i=cadastro.findIndex(c=>c.nome===nome);return i>=0&&i<CORES_CAT.length-1?CORES_CAT[i]:COR_OUTROS;};
+  const larg=el.clientWidth||300;
+  setHtml(el,`<div class="seg-bar" role="img" aria-label="${esc(itens.map(([n,v])=>`${n} ${fmt(v)} (${Math.round(v/total*100)}%)`).join(', '))}">`+
+    itens.map(([n,v])=>{
+      const p=v/total*100, cabe=larg*p/100>=44; // só escreve a % se couber com folga
+      return `<span tabindex="0" style="flex:${v};background:${cor(n)}" data-tip="${esc(`${n}\n${fmt(v)} · ${p.toFixed(0)}%`)}">${cabe?Math.round(p)+'%':''}</span>`;
+    }).join('')+'</div>'+
+    `<ul class="seg-leg">`+itens.map(([n,v])=>`<li><i class="sw" style="background:${cor(n)}"></i><span class="nome">${esc(n)}</span><span class="v">${fmt(v)}</span><span class="p">${Math.round(v/total*100)}%</span></li>`).join('')+'</ul>');
+}
+
+/* Dica ao passar o mouse (ou ao focar pelo teclado) em qualquer [data-tip]. */
+(function dicaGraficos(){
+  const tip=document.createElement('div');tip.id='dash-tip';tip.setAttribute('role','tooltip');
+  document.body.appendChild(tip);
+  const mostrar=(alvo,x,y)=>{
+    const linhas=String(alvo.getAttribute('data-tip')||'').split('\n');
+    tip.innerHTML=`<b>${esc(linhas[0])}</b>`+(linhas.length>1?'\n'+linhas.slice(1).map(esc).join('\n'):'');
+    tip.classList.add('show');
+    const w=tip.offsetWidth,h=tip.offsetHeight;
+    tip.style.left=Math.max(8,Math.min(x+14,innerWidth-w-8))+'px';
+    tip.style.top=(y-h-14<8?y+18:y-h-14)+'px';
+  };
+  const esconder=()=>tip.classList.remove('show');
+  document.addEventListener('pointermove',e=>{
+    const a=e.target&&e.target.closest&&e.target.closest('[data-tip]');
+    if(a)mostrar(a,e.clientX,e.clientY);else esconder();
+  });
+  document.addEventListener('focusin',e=>{
+    const a=e.target&&e.target.closest&&e.target.closest('[data-tip]');
+    if(a){const r=a.getBoundingClientRect();mostrar(a,r.left+r.width/2,r.top);}
+  });
+  document.addEventListener('focusout',esconder);
+  window.addEventListener('scroll',esconder,{passive:true});
+})();
+/* Gráficos medem a largura do cartão: redesenha ao redimensionar. */
+let timerResize=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(timerResize);
+  timerResize=setTimeout(()=>{if(appAberto&&paginaAtiva==='resumo')renderResumo();},150);
+});
 
 /* ── A pagar: fatura por cartão, contas sem cartão uma a uma ── */
 function grupoPagamento(itens){
@@ -1476,7 +1803,8 @@ function renderOrcamento(A){
     const limite=limiteDe(c.nome), gasto=A.porCat[c.nome]||0;
     const pct=gasto/limite*100;
     const cls=pct>100?'estourou':(pct>=80?'atencao':'ok');
-    const rotulo=pct>100?`estourou ${fmt(gasto-limite)}`:(pct>=80?'no limite':'dentro');
+    // ícone + palavra: o estado nunca depende só da cor
+    const rotulo=pct>100?`✕ estourou ${fmt(gasto-limite)}`:(pct>=80?'! perto do limite':`✓ dentro · sobram ${fmt(limite-gasto)}`);
     return `<div class="chart-row">
       <span class="chart-label">${esc(c.nome)}</span>
       <span class="chart-val">${fmt(gasto)} / ${fmt(limite)}</span>
@@ -1502,13 +1830,21 @@ function renderTop(A){
 function renderFuturo(chave){
   const porMes={};
   S.lancamentos.forEach(l=>{if(l.mesChave>chave)porMes[l.mesChave]=(porMes[l.mesChave]||0)+l.valor;});
-  const meses=[];
-  for(let off=1;off<=6;off++){const k=chaveDesloc(chave,off);if(porMes[k])meses.push([chaveCurta(k),porMes[k]]);}
-  chart('chart-futuro',meses,'Nada parcelado para os próximos meses.');
   const totalTudo=Object.values(porMes).reduce((s,v)=>s+v,0);
   const qtdMeses=Object.keys(porMes).length;
+  $('dash-futuro').textContent=fmt(totalTudo);
+  $('var-futuro').textContent=totalTudo?`em ${qtdMeses} mês(es) à frente`:'nada parcelado à frente';
+  const meses=[];
+  for(let off=1;off<=6;off++){
+    const k=chaveDesloc(chave,off), v=porMes[k]||0;
+    meses.push({k,partes:[{v,cor:'var(--s-gasto)'}],linha:null,estado:'cheio',tip:`${chaveExib(k)}\nJá comprometido: ${fmt(v)}`});
+  }
+  const el=$('chart-futuro');
+  setHtml(el,totalTudo
+    ?colunas(el,meses,{altura:180,rotular:'max'})
+    :'<div class="empty-state"><span class="icon">◦</span><p>Nada parcelado para os próximos meses.</p></div>');
   $('nota-futuro').textContent=totalTudo
-    ? `${fmt(totalTudo)} já comprometidos em ${qtdMeses} mês(es) à frente — parcelas de compras já feitas, de todas as pessoas. As cobranças fixas não entram aqui: elas são criadas quando o mês chega.`
+    ? `${fmt(totalTudo)} em parcelas de compras já feitas, de todas as pessoas. Cobranças fixas não entram: elas são criadas quando o mês chega.`
     : '';
 }
 function chart(elId,pares,vazio){
@@ -1600,6 +1936,37 @@ function atualizarFormParcelas(){
     :(p0>1?`Mês em que cai a parcela ${p0}/${n}.`
       :(n>1?'Mês em que cai a 1ª parcela.':'Mês a que a despesa pertence.'));
   previewParcelas();
+  avisoOrcamento();
+}
+/* Avisa ainda no formulário se o lançamento estoura o limite da categoria
+   em algum mês. Soma o que já está lançado, o que está na conferência e o
+   que este lançamento vai gerar (todas as parcelas, todas as pessoas).
+   Só avisa: quem decide é você. */
+function avisoOrcamento(){
+  const el=$('hint-orcamento');if(!el)return;
+  const cat=$('categoria').value, limite=cat?limiteDe(cat):0;
+  const m=parseInt($('mes_referencia').value,10), a=parseInt($('ano_referencia').value,10);
+  const v=parseValor($('valor').value);
+  const esconder=()=>{el.style.display='none';el.textContent='';};
+  if(!limite||!m||!a||!(v>0))return esconder();
+  const novos={};
+  if(ehFixa())novos[`${a}-${pad2(m)}`]=v;
+  else{
+    const {n,p0,tipo,incluirPagas}=opcoesForm(), vals=valoresParcelas(v,n,tipo);
+    for(let i=incluirPagas?1:p0;i<=n;i++){
+      const p=proximoMes(m,a,i-p0), k=`${p.ano}-${pad2(p.mes)}`;
+      novos[k]=(novos[k]||0)+vals[i-1];
+    }
+  }
+  const jaNoMes=k=>[...S.lancamentos,...itensPreparo]
+    .filter(l=>l.categoria===cat&&l.mesChave===k).reduce((s,l)=>s+l.valor,0);
+  const estouros=Object.keys(novos).sort()
+    .map(k=>({k,total:jaNoMes(k)+novos[k]})).filter(x=>x.total>limite+0.004);
+  if(!estouros.length)return esconder();
+  const p=estouros[0];
+  el.textContent=`⚠ Passa o limite de ${cat} em ${chaveCurta(p.k)}: ${fmt(p.total)} de ${fmt(limite)} (${fmt(p.total-limite)} acima)`+
+    (estouros.length>1?` — e em mais ${estouros.length-1} mês(es).`:'.');
+  el.style.display='block';
 }
 function previewParcelas(){
   const m=parseInt($('mes_referencia').value,10)||0, a=parseInt($('ano_referencia').value,10)||0;
@@ -1830,11 +2197,16 @@ function filtrados(){
     valor_desc:(a,z)=>z.valor-a.valor, valor_asc:(a,z)=>a.valor-z.valor,
     desc_asc:(a,z)=>a.desc.localeCompare(z.desc,'pt-BR')
   }[$('f_ordem').value]||(()=>0);
+  /* A busca olha descrição, categoria, cartão e pessoa — e, se o texto for
+     um valor ("89,90", "R$ 1.200"), o valor exato do lançamento. */
+  const semAcento=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const bt=semAcento(b), bv=/\d/.test(b)?parseValor(b):NaN;
+  const casa=l=>!b||(!isNaN(bv)&&Math.abs(l.valor-bv)<0.005)||
+    [l.desc,l.categoria,l.cartao,l.responsavel].some(c=>semAcento(c).includes(bt));
   return S.lancamentos.filter(l=>
     (fm==='Todos'||l.mesChave===fm)&&(fr==='Todos'||l.responsavel===fr)&&
     (fc==='Todos'||l.cartao===fc)&&(fk==='Todos'||l.categoria===fk)&&
-    (fs==='Todos'||(fs==='pago'?l.pago:!l.pago))&&
-    (!b||String(l.desc).toLowerCase().includes(b))
+    (fs==='Todos'||(fs==='pago'?l.pago:!l.pago))&&casa(l)
   ).sort(cmp);
 }
 function renderExtrato(){
@@ -2263,11 +2635,26 @@ function abrirModalReceita(){
   preencherSelect($('receita-ano'),anosDisponiveis(parseInt(ano,10)).map(a=>[String(a),String(a)]),ano);
   $('receita-mes').value=String(parseInt(mes,10));
   $('receita-ano').value=ano;
-  $('modal-receita-sub').textContent=chaveExib(chave);
-  $('receita-valor').value=S.receitas[chave]!=null?fmtNum(S.receitas[chave]):'';
+  preencherValorReceita(chave);
   $('modal-receita').classList.add('open');
   setTimeout(()=>$('receita-valor').focus(),80);
 }
+/* Mês sem receita: sugere o valor do último mês que tem uma — na maioria
+   dos meses a receita se repete. Só preenche; nada é salvo sem o botão. */
+function preencherValorReceita(chave){
+  $('modal-receita-sub').textContent=chaveExib(chave);
+  const dica=$('receita-sugestao');
+  if(S.receitas[chave]!=null){
+    $('receita-valor').value=fmtNum(S.receitas[chave]);dica.style.display='none';return;
+  }
+  const anterior=Object.keys(S.receitas).filter(k=>k<chave).sort().pop();
+  if(anterior){
+    $('receita-valor').value=fmtNum(S.receitas[anterior]);
+    dica.textContent=`Sugerido: o mesmo valor de ${chaveExib(anterior)}. Confira antes de salvar.`;
+    dica.style.display='block';
+  }else{$('receita-valor').value='';dica.style.display='none';}
+}
+const chaveDoModalReceita=()=>`${$('receita-ano').value}-${pad2($('receita-mes').value)}`;
 const fecharModalReceita=()=>$('modal-receita').classList.remove('open');
 function salvarReceita(){
   const m=parseInt($('receita-mes').value,10),a=parseInt($('receita-ano').value,10);
@@ -2375,9 +2762,13 @@ function renderLeitura(){
   const d=leituraDados.filter(l=>normalizarMesChave(l.mes)===chave);
   $('leitura-eyebrow').textContent='Total de '+chaveExib(chave);
   $('leitura-total').textContent=fmt(d.reduce((s,l)=>s+(Number(l.valor)||0),0));
-  $('leitura-count').textContent=`${d.length} lançamento(s)`;
+  /* O servidor já mandava `pago`; agora a pessoa vê o que já foi acertado. */
+  const ehPago=l=>String(l.pago==null?'':l.pago).trim().toLowerCase()==='sim';
+  const aberto=d.filter(l=>!ehPago(l)).reduce((s,l)=>s+(Number(l.valor)||0),0);
+  $('leitura-count').textContent=`${d.length} lançamento(s)`+
+    (d.length?(aberto>0?` · ${fmt(aberto)} pendente`:' · tudo pago'):'');
   $('leitura-lista').innerHTML=d.length?d.map(l=>`<div class="lanc leitura">
-      <div class="lanc-desc">${esc(l.descricao)}</div>
+      <div class="lanc-desc">${esc(l.descricao)} ${ehPago(l)?'<span class="chip st-pago">✓ pago</span>':'<span class="chip st-pendente">pendente</span>'}</div>
       <div class="lanc-valor">${fmt(l.valor)}</div>
       <div class="lanc-meta">${chipParcela(parseInt(l.parcela_atual,10)||1,parseInt(l.parcelas,10)||1)}${l.cartao?`<span class="chip">${esc(l.cartao)}</span>`:''}<span class="chip">${esc(l.categoria)}</span></div>
     </div>`).join('')
@@ -2487,13 +2878,15 @@ on('btn-abrir-receita','click',abrirModalReceita);
 on('btn-salvar-receita','click',salvarReceita);
 on('btn-fechar-receita','click',fecharModalReceita);
 on('receita-valor','keydown',e=>{if(e.key==='Enter')salvarReceita();});
+['receita-mes','receita-ano'].forEach(id=>on(id,'change',()=>preencherValorReceita(chaveDoModalReceita())));
+on('receita-valor','input',()=>{$('receita-sugestao').style.display='none';});
 on('btn-preparar','click',prepararLancamento);
 on('btn-salvar-tudo','click',salvarTudo);
 on('btn-limpar-conferencia','click',()=>{
   if(!itensPreparo.length||!confirm('Descartar todos os itens da conferência?'))return;
   itensPreparo=[];salvarPreparo();render();
 });
-['valor','parcelas','mes_referencia','ano_referencia','tipo_valor','parcela_inicial'].forEach(id=>{
+['valor','parcelas','mes_referencia','ano_referencia','tipo_valor','parcela_inicial','categoria'].forEach(id=>{
   on(id,'input',atualizarFormParcelas);on(id,'change',atualizarFormParcelas);
 });
 on('criar_pagas','change',atualizarFormParcelas);
