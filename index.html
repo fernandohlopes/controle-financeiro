@@ -933,6 +933,9 @@ const chaveExib=k=>{if(!k)return'—';const p=k.split('-'),i=parseInt(p[1],10)-1
 const chaveMedia=k=>{if(!k)return'—';const p=k.split('-'),i=parseInt(p[1],10)-1;return MESES[i]?`${MESES[i].slice(0,3)}/${p[0]}`:k;};
 const chaveCurta=k=>{if(!k)return'—';const p=k.split('-'),i=parseInt(p[1],10)-1;return MESES[i]?`${MESES[i].slice(0,3)}/${p[0].slice(2)}`:k;};
 const chaveHoje=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;};
+/* Data de hoje no fuso do aparelho. toISOString() é UTC: no Brasil,
+   depois das 21h ela já devolvia o dia seguinte. */
+const dataHoje=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;};
 const dateParaBanco=(m,a)=>{const mm=parseInt(m,10),aa=parseInt(a,10);return (isNaN(mm)||isNaN(aa)||mm<1||mm>12)?null:`${aa}-${pad2(mm)}-01`;};
 function proximoMes(m,a,off){const d=new Date(a,m-1+off,1);return{mes:d.getMonth()+1,ano:d.getFullYear()};}
 
@@ -967,7 +970,9 @@ function lerSessao(){
 /* "Manter conectado" → localStorage (sobrevive a fechar o app).
    Sem isso → sessionStorage (some quando o app/aba é fechado). */
 function salvarSessao(s){
-  SESSAO=s;store.del(K.sessao);sstore.del(K.sessao);
+  // Só apaga a cópia do OUTRO armazenamento: apagar e regravar o mesmo
+  // faria as outras abas acharem que houve logout.
+  SESSAO=s;(s.manter?sstore:store).del(K.sessao);
   (s.manter?store:sstore).set(K.sessao,JSON.stringify(s));
 }
 function apagarSessao(){SESSAO=null;store.del(K.sessao);sstore.del(K.sessao);}
@@ -1344,7 +1349,7 @@ function renderResumo(){
   $('dash-meu').textContent=fmt(A.meu);
   $('dash-outros').textContent=fmt(A.terceiros);
   $('nota-saldo').textContent=pessoaPrincipal
-    ? `Saldo = sua receita − seus gastos (${esc(pessoaPrincipal)}). Os ${fmtCurto(A.terceiros)} de terceiros ficam fora da conta.`
+    ? `Saldo = sua receita − seus gastos (${pessoaPrincipal}). Os ${fmtCurto(A.terceiros)} de terceiros ficam fora da conta.`
     : 'Escolha a "pessoa principal" em Ajustes para o saldo considerar só os seus gastos.';
 
   // ── pago x pendente
@@ -1503,7 +1508,7 @@ function renderFuturo(chave){
   const totalTudo=Object.values(porMes).reduce((s,v)=>s+v,0);
   const qtdMeses=Object.keys(porMes).length;
   $('nota-futuro').textContent=totalTudo
-    ? `${fmt(totalTudo)} já comprometidos em ${qtdMeses} mês(es) à frente — parcelas de compras que você já fez. As cobranças fixas não entram aqui: elas são criadas quando o mês chega.`
+    ? `${fmt(totalTudo)} já comprometidos em ${qtdMeses} mês(es) à frente — parcelas de compras já feitas, de todas as pessoas. As cobranças fixas não entram aqui: elas são criadas quando o mês chega.`
     : '';
 }
 function chart(elId,pares,vazio){
@@ -1683,7 +1688,7 @@ function gerarParcelas(desc,mes,ano,valores,resp,cartao,cat,op,grupoId){
   return itens;
 }
 function prepararLancamento(){
-  if(ehFixa())return salvarFixaDoFormulario();
+  if(ehFixa())return comTrava('fixa','btn-preparar',salvarFixaDoFormulario);
   if(!validar())return;
   const desc=$('desc').value.trim(), valor=parseValor($('valor').value);
   const mes=parseInt($('mes_referencia').value,10), ano=parseInt($('ano_referencia').value,10);
@@ -1895,13 +1900,13 @@ function marcarPagamento(ids,pago){
     return l&&!!l.pago!==!!pago;
   });
   if(!alvo.length)return 0;
-  const hoje=new Date().toISOString().slice(0,10);
+  const hoje=dataHoje();
   mutar(()=>{
     alvo.forEach(id=>{
       const l=S.lancamentos.find(x=>x.id===id);
       if(l){l.pago=!!pago;l.pagoEm=pago?hoje:'';}
     });
-  },'marcarPagos',{ids:alvo,pago:!!pago});
+  },'marcarPagos',{ids:alvo,pago:!!pago,pagoEm:pago?hoje:''}); // a data vai junto: offline, o servidor só recebe dias depois
   return alvo.length;
 }
 function alternarPago(id){
@@ -1938,7 +1943,7 @@ async function exportarCSV(){
   dados.forEach(l=>linhas.push([c(l.desc),c(chaveExib(l.mesChave)),c(l.parcelaAtual),c(l.parcelas),
     c(l.responsavel),c(l.cartao),c(l.categoria),c(l.valor.toFixed(2).replace('.',',')),
     c(l.pago?'Pago':'Pendente'),c(l.pagoEm||''),c(ehRecorrente(l)?'Sim':'Não')].join(';')));
-  const nome=`extrato-${new Date().toISOString().slice(0,10)}.csv`;
+  const nome=`extrato-${dataHoje()}.csv`;
   const blob=new Blob(['﻿'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8;'});
 
   /* No celular (sobretudo no iPhone com o app instalado) o download por
@@ -2010,18 +2015,27 @@ async function salvarFixaDoFormulario(){
     ? [...document.querySelectorAll('#divisao-checkboxes .checked')].map(c=>c.dataset.nome)
     : [$('responsavel_unico').value];
   const cotas=dividirValor(valor,pessoas.length);
-  let gravadas=0;
-  for(let i=0;i<pessoas.length;i++){
-    const regra={id:uid(),desc:pessoas.length>1?desc+' (Div.)':desc,valor:cotas[i],
-      responsavel:pessoas[i],cartao,categoria:cat,mesInicio,mesFim,ultimoMes:'',ativa:true};
-    if(await gravarRecorrente(regra,false,`Cobrança fixa "${regra.desc}" criada`))gravadas++;
-    else break;
-  }
-  if(gravadas){
-    resetForm();render();
-    mudarPagina('extrato');
-    toast(gravadas>1?`${gravadas} cobranças fixas criadas`:'Cobrança fixa criada — veja no extrato','success');
-  }
+  if(cotas.some(v=>!(v>0)))return toast('Valor pequeno demais para dividir entre essas pessoas','error');
+  const regras=pessoas.map((nome,i)=>({id:uid(),desc:pessoas.length>1?desc+' (Div.)':desc,valor:cotas[i],
+    responsavel:nome,cartao,categoria:cat,mesInicio,mesFim,ultimoMes:'',ativa:true}));
+  /* Todas as cotas num pedido só: o servidor grava todas ou nenhuma. Antes
+     era um pedido por pessoa, e uma falha no meio deixava só parte criada.
+     Os ids vêm daqui, então a repetição automática não duplica nada. */
+  if(!exigirOnline())return;
+  let ok=false;
+  await comOcupado(async()=>{
+    try{
+      await api('addRecorrentes',{itens:regras.map(recParaAPI)});
+      versaoLocal++;
+      S.recorrentes.push(...regras);
+      salvarCache();ok=true;
+    }catch(e){if(!e.sessao)toast(erroAmigavel(e),'error');}
+  });
+  if(!ok)return;
+  await recarregar({forcar:true});
+  resetForm();render();
+  mudarPagina('extrato');
+  toast(regras.length>1?`${regras.length} cobranças fixas criadas`:'Cobrança fixa criada — veja no extrato','success');
 }
 /* Depois de editar um lançamento fixo no extrato, oferece levar a mudança
    para os próximos meses (isto é, para a regra). */
@@ -2112,6 +2126,17 @@ async function comOcupado(fn){
   ocupado++;render();
   try{return await fn();}
   finally{ocupado--;render();}
+}
+/* Impede a mesma ação de rodar duas vezes ao mesmo tempo. Cada toque gera
+   um id novo, então um segundo toque enquanto o servidor ainda respondia
+   criava um cadastro (ou uma cobrança fixa) duplicado. */
+const travas=new Set();
+async function comTrava(chave,btnId,fn){
+  if(travas.has(chave))return;
+  const btn=btnId?$(btnId):null;
+  travas.add(chave);if(btn)btn.disabled=true;
+  try{return await fn();}
+  finally{travas.delete(chave);if(btn)btn.disabled=false;}
 }
 /* Cadastros esperam o servidor (o token do link é gerado lá). O id vai
    daqui, então repetir o pedido não cria duplicata. */
@@ -2288,6 +2313,11 @@ async function entrar(ev){
   btn.disabled=true;btn.textContent='Verificando...';
   try{
     const r=await api('login',{usuario,senha,manter},{tentativas:1});
+    /* Outra pessoa entrando neste aparelho: o cache e a fila guardados são
+       do usuário anterior. Sem isto, ela via os dados dele e as alterações
+       pendentes dele eram enviadas para a conta dela. */
+    const anterior=store.get(K.usuario);
+    if(anterior&&anterior.trim().toLowerCase()!==usuario.toLowerCase())descartarDadosLocais();
     salvarSessao({token:r.sessao,expiraEm:r.sessaoExpiraEm,usuario:r.usuario||usuario,manter:!!r.manter});
     store.set(K.usuario,usuario);store.set(K.manter,manter?'1':'0');
     $('auth-senha').value='';
@@ -2305,6 +2335,13 @@ async function entrar(ev){
     err.textContent=erroAmigavel(e);
     $('auth-senha').focus();$('auth-senha').select();
   }finally{btn.disabled=false;btn.textContent='Entrar';}
+}
+function descartarDadosLocais(){
+  versaoLocal++;
+  S.lancamentos=[];S.receitas={};S.pessoas=[];S.categorias=[];S.cartoes=[];S.recorrentes=[];S.atualizadoEm=null;
+  outbox=[];itensPreparo=[];editandoId=null;pessoaPrincipal=null;
+  [K.cache,K.outbox,K.principal,K.ultCartao].forEach(k=>store.del(k));
+  sstore.del(K.preparo);
 }
 function abrirApp(){
   $('auth-screen').classList.add('hidden');
@@ -2394,7 +2431,7 @@ if('serviceWorker' in navigator){
 const ACOES={
   'toggle-pessoa':el=>togglePessoa(el),
   'copiar-link':el=>copiarLink(el.dataset.link),
-  'novo-link':el=>novoLink(el.dataset.id,el.dataset.nome),
+  'novo-link':el=>comTrava('link-'+el.dataset.id,null,()=>novoLink(el.dataset.id,el.dataset.nome)),
   'remover-pessoa':el=>removerCadastro('pessoa',el.dataset.id,el.dataset.nome),
   'remover-categoria':el=>removerCadastro('categoria',el.dataset.id,el.dataset.nome),
   'remover-cartao':el=>removerCadastro('cartao',el.dataset.id,el.dataset.nome),
@@ -2468,13 +2505,14 @@ on('f_mes','change',()=>{filtroMesUsuario=$('f_mes').value;render();});
 ['f_resp','f_cartao','f_cat','f_ordem','f_situacao'].forEach(id=>on(id,'change',render));
 on('f_busca','input',render);
 on('btn-exportar','click',exportarCSV);
-on('btn-add-pessoa','click',()=>adicionarCadastro('pessoa'));
-on('btn-add-categoria','click',()=>adicionarCadastro('categoria'));
-on('btn-add-cartao','click',()=>adicionarCadastro('cartao'));
-on('nova-pessoa-nome','keydown',e=>{if(e.key==='Enter')adicionarCadastro('pessoa');});
-on('nova-pessoa-email','keydown',e=>{if(e.key==='Enter')adicionarCadastro('pessoa');});
-on('nova-categoria','keydown',e=>{if(e.key==='Enter')adicionarCadastro('categoria');});
-on('novo-cartao','keydown',e=>{if(e.key==='Enter')adicionarCadastro('cartao');});
+const addCadastro=(tipo,btnId)=>comTrava('add-'+tipo,btnId,()=>adicionarCadastro(tipo));
+on('btn-add-pessoa','click',()=>addCadastro('pessoa','btn-add-pessoa'));
+on('btn-add-categoria','click',()=>addCadastro('categoria','btn-add-categoria'));
+on('btn-add-cartao','click',()=>addCadastro('cartao','btn-add-cartao'));
+on('nova-pessoa-nome','keydown',e=>{if(e.key==='Enter')addCadastro('pessoa','btn-add-pessoa');});
+on('nova-pessoa-email','keydown',e=>{if(e.key==='Enter')addCadastro('pessoa','btn-add-pessoa');});
+on('nova-categoria','keydown',e=>{if(e.key==='Enter')addCadastro('categoria','btn-add-categoria');});
+on('novo-cartao','keydown',e=>{if(e.key==='Enter')addCadastro('cartao','btn-add-cartao');});
 on('pessoa-principal','change',e=>definirPessoaPrincipal(e.target.value));
 on('leitura-mes-filtro','change',renderLeitura);
 on('btn-limpar-dados','click',abrirModalSenha);
@@ -2498,6 +2536,27 @@ document.addEventListener('visibilitychange',()=>{
   processarFila().then(()=>recarregar());
 });
 setInterval(()=>{if(outbox.length&&SESSAO)processarFila();},60000);
+
+/* Várias abas/janelas abertas: cada uma tinha a sua fila em memória e, ao
+   gravar, apagava o que a outra tinha gravado — offline, alterações se
+   perdiam. Agora cada aba adota o que a outra gravou. As operações que esta
+   aba já está enviando são mantidas (o servidor ignora repetições). */
+window.addEventListener('storage',e=>{
+  if(e.storageArea!==localStorage)return;
+  if(e.key===K.outbox){
+    const minhasEmVoo=outbox.filter(op=>emVoo.has(op.id));
+    carregarOutbox();
+    minhasEmVoo.forEach(op=>{if(!outbox.some(o=>o.id===op.id))outbox.unshift(op);});
+    render();
+  }else if(e.key===K.cache&&e.newValue){
+    versaoLocal++; // descarta uma recarga em andamento, que viria sem a mudança da outra aba
+    if(carregarCache())carregarPessoaPrincipal();
+    render();
+  }else if(e.key===K.sessao&&!e.newValue&&SESSAO&&SESSAO.manter){
+    // saiu na outra aba
+    SESSAO=null;mostrarLogin();
+  }
+});
 
 /* ═══════════════ INICIALIZAÇÃO ═══════════════ */
 (function mesesEAnos(){
