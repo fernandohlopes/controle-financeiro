@@ -381,10 +381,25 @@ details.filtros-box>summary::after{content:'+';font-size:1.1rem;color:var(--gold
 details.filtros-box[open]>summary::after{content:'−'}
 .filtros-body{padding:0 15px 15px}
 #filtros-resumo{font-size:0.66rem;color:var(--text3);text-transform:none;letter-spacing:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ext-summary{display:flex;gap:9px;margin-bottom:16px}
-.ext-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;flex:1;min-width:0}
-.ext-stat-label{font-size:0.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:5px}
-.ext-stat-val{font-family:var(--serif);font-size:1.2rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Celular: só Total e Pendente, meio a meio — o número de itens vai no
+   rótulo do total. Valor em sans (mais estreita que a serifada); o tamanho
+   acompanha a tela e o número nunca é cortado. */
+.ext-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:16px}
+.ext-itens{display:none}
+.so-celular{color:var(--text3);letter-spacing:0;text-transform:none}
+.so-desktop{display:none}
+.ext-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;min-width:0}
+.ext-stat-label{font-size:0.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ext-stat-val{font-family:var(--sans);font-size:clamp(.92rem,4.6vw,1.15rem);font-weight:600;letter-spacing:-.01em;line-height:1.25;white-space:nowrap}
+.filtros-ativos{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:-4px 0 14px}
+.filtros-ativos:empty{display:none}
+.filtro-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.68rem;color:var(--gold2);
+  background:var(--gold-dim);border:1px solid rgba(201,168,76,.25);border-radius:20px;padding:6px 6px 6px 11px;cursor:pointer;min-height:32px}
+.filtro-chip b{font-weight:400;color:var(--text3)}
+.filtro-chip .x{display:inline-flex;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;background:rgba(201,168,76,.18);font-size:.7rem;line-height:1}
+.filtro-chip:hover .x{background:rgba(201,168,76,.35)}
+.btn-limpar{background:none;border:1px solid var(--border);color:var(--text2);font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;border-radius:20px;padding:7px 12px;min-height:32px;cursor:pointer;margin-left:auto}
+.btn-limpar:hover{color:var(--text);border-color:var(--border2)}
 
 /* ── AJUSTES ── */
 .settings-add-row{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
@@ -497,7 +512,12 @@ details.filtros-box[open]>summary::after{content:'−'}
   .form-grid .full{grid-column:span 2}
   .filtros{grid-template-columns:repeat(5,1fr);gap:10px}
   .busca-row{margin-bottom:18px}
-  .ext-summary{gap:14px}
+  .ext-summary{gap:14px;grid-template-columns:minmax(0,.6fr) minmax(0,1fr) minmax(0,1fr)}
+  .ext-itens{display:block}
+  .so-celular{display:none}
+  .so-desktop{display:inline}
+  .ext-stat{padding:13px 16px}
+  .ext-stat-val{font-size:1.3rem}
   .settings-add-row{flex-direction:row}
   .settings-add-row .inp{flex:1}
   .settings-add-row .btn{flex-shrink:0}
@@ -888,9 +908,11 @@ details.filtros-box[open]>summary::after{content:'−'}
         <option value="desc_asc">A–Z</option>
       </select>
     </div>
+    <!-- filtros ativos, sempre à vista (no celular a caixa de filtros fica fechada) -->
+    <div class="filtros-ativos" id="filtros-ativos"></div>
     <div class="ext-summary">
-      <div class="ext-stat"><div class="ext-stat-label">Itens</div><div class="ext-stat-val" id="ext-count">0</div></div>
-      <div class="ext-stat"><div class="ext-stat-label">Total filtrado</div><div class="ext-stat-val" id="ext-total">R$ 0,00</div></div>
+      <div class="ext-stat ext-itens"><div class="ext-stat-label">Itens</div><div class="ext-stat-val" id="ext-count">0</div></div>
+      <div class="ext-stat"><div class="ext-stat-label">Total<span class="so-desktop"> filtrado</span><span class="so-celular" id="ext-count-mini"></span></div><div class="ext-stat-val" id="ext-total">R$ 0,00</div></div>
       <div class="ext-stat"><div class="ext-stat-label">Pendente</div><div class="ext-stat-val" id="ext-pendente" style="color:var(--amber)">R$ 0,00</div></div>
     </div>
     <button class="btn btn-ghost btn-full btn-sm" id="btn-exportar" style="margin-bottom:16px">Exportar CSV</button>
@@ -1617,8 +1639,7 @@ function abrirExtratoFiltrado(f){
   filtroMesUsuario=mesResumo();
   $('f_busca').value='';$('f_situacao').value='Todos';
   editandoId=null;
-  mudarPagina('extrato');
-  const box=$('filtros-box');if(box)box.open=true; // no celular, mostra quais filtros estão ativos
+  mudarPagina('extrato'); // os filtros aplicados aparecem como chips acima dos totais
 }
 
 /* ═══════════════ GRÁFICOS DO PAINEL ═══════════════
@@ -2331,10 +2352,27 @@ function renderExtrato(){
   const ativos=[fm.value,$('f_resp').value,$('f_cartao').value,$('f_cat').value,rotuloSit].filter(v=>v&&v!=='Todos');
   $('filtros-resumo').textContent=ativos.length?'· '+ativos.map(v=>/^\d{4}-\d{2}$/.test(v)?chaveExib(v):v).join(', '):'· nenhum';
 
+  /* Um chip por filtro ativo (toque no chip tira só ele) e "Limpar filtros"
+     para tirar todos de uma vez — inclusive o mês e a busca. */
+  const busca=$('f_busca').value.trim();
+  const chips=[
+    fm.value!=='Todos'&&['f_mes','Mês',chaveExib(fm.value)],
+    $('f_resp').value!=='Todos'&&['f_resp','Pessoa',$('f_resp').value],
+    $('f_cartao').value!=='Todos'&&['f_cartao','Cartão',$('f_cartao').value],
+    $('f_cat').value!=='Todos'&&['f_cat','Categoria',$('f_cat').value],
+    rotuloSit&&['f_situacao','Situação',rotuloSit],
+    busca&&['f_busca','Busca',`"${busca}"`]
+  ].filter(Boolean);
+  setHtml($('filtros-ativos'),chips.length
+    ?chips.map(([id,rot,v])=>`<button class="filtro-chip" data-act="limpar-filtro" data-f="${id}" aria-label="Tirar o filtro ${esc(rot)}: ${esc(v)}"><b>${esc(rot)}</b>${esc(v)}<span class="x" aria-hidden="true">✕</span></button>`).join('')+
+      `<button class="btn-limpar" data-act="limpar-filtros">Limpar filtros</button>`
+    :'');
+
   const dados=filtrados();
   if(editandoId&&!dados.some(l=>l.id===editandoId))editandoId=null; // item sumiu (excluído em outro aparelho)
   const pendenteFiltrado=dados.filter(l=>!l.pago).reduce((s,l)=>s+l.valor,0);
   $('ext-count').textContent=dados.length;
+  $('ext-count-mini').textContent=` · ${dados.length} ${dados.length===1?'item':'itens'}`;
   $('ext-total').textContent=fmt(dados.reduce((s,l)=>s+l.valor,0));
   $('ext-pendente').textContent=fmt(pendenteFiltrado);
   const lista=$('lista-extrato');
@@ -3040,8 +3078,18 @@ const ACOES={
   'pagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,true),
   'despagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,false),
   'salvar-limite':el=>salvarLimite(el.dataset.id,el.dataset.nome),
-  'ver-extrato':el=>abrirExtratoFiltrado({cat:el.dataset.cat,cartao:el.dataset.cartao,resp:el.dataset.resp})
+  'ver-extrato':el=>abrirExtratoFiltrado({cat:el.dataset.cat,cartao:el.dataset.cartao,resp:el.dataset.resp}),
+  'limpar-filtro':el=>limparFiltros([el.dataset.f]),
+  'limpar-filtros':()=>limparFiltros(['f_mes','f_resp','f_cartao','f_cat','f_situacao','f_busca'])
 };
+function limparFiltros(ids){
+  ids.forEach(id=>{
+    if(id==='f_busca')$('f_busca').value='';
+    else if(id==='f_mes'){filtroMesUsuario='Todos';$('f_mes').value='Todos';}
+    else $(id).value='Todos';
+  });
+  render();
+}
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');
   if(a&&ACOES[a.dataset.act]){ACOES[a.dataset.act](a);return;}
