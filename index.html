@@ -307,6 +307,22 @@ details.tabela-dados[open]>summary::before{content:'▾ '}
 #dash-tip b{color:var(--text);font-weight:500}
 @media (prefers-reduced-motion:reduce){.bar-fill,.medidor-fill,#dash-tip,.page{transition:none;animation:none}}
 
+/* ── LANÇAR RÁPIDO ── */
+.card-rapido{border-color:rgba(201,168,76,.28);background:linear-gradient(160deg,rgba(201,168,76,.07),transparent 60%),var(--card)}
+.rapido-linha{display:flex;gap:8px}
+.rapido-linha .inp{flex:1;min-width:0}
+.rapido-linha .btn{flex-shrink:0;padding:12px 16px}
+#frase-exemplos{margin-top:8px}
+#frase-exemplos i{font-style:normal;color:var(--text2)}
+.frase-previa:empty{display:none}
+.frase-previa{margin-top:12px}
+.fchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.fchip{display:inline-flex;gap:6px;align-items:baseline;font-family:var(--mono);font-size:.72rem;color:var(--text);
+  background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:5px 9px}
+.fchip b{font-weight:400;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+.fchip.auto{color:var(--gold2);border-color:rgba(201,168,76,.35)}
+.fchip.falta{color:var(--amber);border-color:rgba(251,191,36,.45);border-style:dashed}
+
 /* ── FORMULÁRIO ── */
 .form-grid{display:grid;grid-template-columns:1fr;gap:16px}
 .mes-ano-row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
@@ -749,6 +765,18 @@ details.filtros-box[open]>summary::after{content:'−'}
 <section id="lancar" class="page">
   <div class="section-header">
     <div><div class="section-title">Lançar</div><div class="section-sub">Nova despesa</div></div>
+  </div>
+  <!-- Lançar rápido: uma frase vira lançamento (sem IA, sem custo) -->
+  <div class="card card-rapido">
+    <div class="card-label">Lançar rápido</div>
+    <div class="rapido-linha">
+      <input type="text" id="frase" class="inp" maxlength="200" autocomplete="off" enterkeyhint="send"
+             placeholder="mercado 89,90 nubank" aria-label="Escreva o gasto numa frase" aria-describedby="frase-exemplos">
+      <button class="btn btn-primary" id="btn-frase-add" disabled>Adicionar</button>
+    </div>
+    <div class="field-hint" id="frase-exemplos">Ex.: <i>tv 2899 em 10x hipercard</i> · <i>pizza 120 dividido com cindhy</i> · <i>netflix 44,90 todo mês</i> · <i>luz 390 pix dezembro</i></div>
+    <div class="frase-previa" id="frase-previa" aria-live="polite"></div>
+    <button class="btn btn-ghost btn-sm" id="btn-frase-ajustar" style="margin-top:10px">Ajustar no formulário</button>
   </div>
   <div class="card">
     <div class="form-grid">
@@ -2232,6 +2260,235 @@ function salvarTudo(){
   toast(`${itens.length} lançamento(s) registrados`,'success');
 }
 
+/* ═══════════════ LANÇAR RÁPIDO (frase → lançamento) ═══════════════
+   Sem IA e sem custo: regras simples + o seu próprio histórico.
+   "mercado 89,90 nubank", "tv 2899 em 10x hipercard",
+   "pizza 120 dividido com cindhy", "netflix 44,90 todo mês".
+   O resultado preenche o formulário de sempre — validação, parcelas,
+   divisão e conferência são as mesmas do lançamento manual. */
+const normTxt=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const chaveDesc=d=>normTxt(semDiv(d)).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const PALAVRAS_VAZIAS=new Set(['no','na','nos','nas','do','da','dos','das','de','em','com','pra','para','pro','o','a','os','as','um','uma','e','gastei','paguei','comprei','compra','compras','reais','real','r$','cartao','hoje','ontem','pelo','pela','valor','foi','de']);
+/* palavra-chave → categoria (só vale se a categoria existir no cadastro) */
+const DICAS_CATEGORIA=[
+  [/^(mercado|supermercado|atacad|atacadao|assai|carrefour|feira|hortifruti|acougue)/,['supermercado','mercado']],
+  [/^(farmacia|remedio|drogaria|panvel|raia|medico|consulta|exame|dentista|academia|pilates)/,['saude']],
+  [/^(uber|99|taxi|cabify)$/,['aplicativo 99','transporte']],
+  [/^(lanche|pizza|ifood|hamburguer|burger|sushi|cafe|padaria|restaurante|almoco|janta|jantar|sorvete|acai)/,['lanches','alimentacao']],
+  [/^(gasolina|combustivel|posto|alcool|etanol|oficina|estacionamento|pedagio|ipva|mecanico|pneu)/,['veiculo']],
+  [/^(luz|agua|internet|aluguel|condominio|cond|gas|energia|vivo|claro|tim|oi|iptu)$/,['contas da casa']],
+  [/^(roupa|roupas|tenis|sapato|camisa|calca|zara|renner|cea|riachuelo|perfume|bone)/,['roupas']],
+  [/^(netflix|spotify|prime|disney|hbo|max|youtube|assinatura|apple|icloud|google|chatgpt|claude|canva|deezer)/,['assinaturas']],
+  [/^(celular|fone|notebook|tablet|monitor|teclado|mouse|carregador|cabo|tv)$/,['eletronicos']]
+];
+function categoriaPorDica(desc){
+  const palavras=chaveDesc(desc).split(' ');
+  const cats=S.categorias.map(c=>c.nome);
+  for(const [re,alvos] of DICAS_CATEGORIA){
+    if(!palavras.some(p=>re.test(p)))continue;
+    // "supermercado" acha "Supermercados"; "saude" acha "Saúde"
+    const achou=cats.find(c=>{const nc=normTxt(c);return alvos.some(a=>nc===a||nc===a+'s'||nc.startsWith(a));});
+    if(achou)return achou;
+  }
+  return null;
+}
+/* o que você costuma usar para essa descrição: categoria, cartão, pessoa */
+function sugestaoDoHistorico(desc){
+  const k=chaveDesc(desc);if(!k)return null;
+  const todos=[...S.lancamentos,...itensPreparo].filter(l=>l.desc);
+  let base=todos.filter(l=>chaveDesc(l.desc)===k);
+  if(!base.length){const p=k.split(' ')[0];if(p.length>=3)base=todos.filter(l=>chaveDesc(l.desc).split(' ')[0]===p);}
+  if(!base.length)return null;
+  const maisComum=campo=>{const c={};base.forEach((l,i)=>{c[l[campo]]=(c[l[campo]]||0)+1+i/1e6;});
+    return Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0];};
+  return{categoria:maisComum('categoria'),cartao:maisComum('cartao'),responsavel:maisComum('responsavel'),vezes:base.length};
+}
+
+function interpretarFrase(texto){
+  const r={original:texto,desc:'',valor:null,tipo:'total',parcelas:1,cartao:undefined,categoria:null,catOrigem:null,
+    responsavel:null,divisao:null,mes:null,ano:null,fixa:false,faltando:[]};
+  const toks=String(texto||'').trim().split(/\s+/).filter(Boolean).map(o=>({o,n:normTxt(o).replace(/[!?;:]+$/,''),usado:false}));
+  const livres=()=>toks.filter(t=>!t.usado);
+  /* acha uma sequência de palavras (ex.: "mercado pago", "mes que vem") ainda não usada */
+  const acharSeq=palavras=>{
+    for(let i=0;i+palavras.length<=toks.length;i++){
+      if(palavras.every((p,j)=>!toks[i+j].usado&&toks[i+j].n.replace(/[.,]$/,'')===p))return i;
+    }return -1;
+  };
+  const usar=(i,n=1)=>{for(let j=i;j<i+n;j++)toks[j].usado=true;};
+  const usarPreposicaoAntes=i=>{if(i>0&&!toks[i-1].usado&&['no','na','do','da','pelo','pela','com','cartao','de','em'].includes(toks[i-1].n))toks[i-1].usado=true;};
+
+  // 1) parcelas: "10x", "10 x", "10 vezes", "10 parcelas", "em 10x de 289,90"
+  for(let i=0;i<toks.length;i++){
+    if(toks[i].usado)continue;
+    let m=toks[i].n.match(/^(\d{1,2})x$/), n=null, fim=i;
+    if(m)n=+m[1];
+    else if(/^\d{1,2}$/.test(toks[i].n)&&toks[i+1]&&['x','vezes','parcelas','parcela'].includes(toks[i+1].n)){n=+toks[i].n;fim=i+1;}
+    if(n&&n>=1&&n<=72){
+      r.parcelas=n;usar(i,fim-i+1);usarPreposicaoAntes(i);
+      // "de 289,90" logo depois = valor de CADA parcela
+      if(toks[fim+1]&&toks[fim+1].n==='de'&&toks[fim+2]&&!isNaN(parseValor(toks[fim+2].o))){
+        r.valor=parseValor(toks[fim+2].o);r.tipo='parcela';usar(fim+1,2);
+      }
+      break;
+    }
+  }
+  // 2) cobrança fixa
+  for(const seq of [['todo','mes'],['todos','os','meses'],['mensal'],['fixa'],['fixo'],['recorrente'],['mensalmente']]){
+    const i=acharSeq(seq);if(i>=0){r.fixa=true;usar(i,seq.length);}
+  }
+  // 3) mês: "mês que vem", "próximo mês", "dezembro", "em janeiro de 2027"
+  const hoje=new Date();let mes=hoje.getMonth()+1,ano=hoje.getFullYear();
+  for(const seq of [['mes','que','vem'],['proximo','mes']]){
+    const i=acharSeq(seq);if(i>=0){const p=proximoMes(mes,ano,1);mes=p.mes;ano=p.ano;usar(i,seq.length);usarPreposicaoAntes(i);}
+  }
+  MESES.forEach((nome,idx)=>{
+    const i=acharSeq([normTxt(nome)]);if(i<0)return;
+    mes=idx+1;usar(i);usarPreposicaoAntes(i);
+    if(toks[i+1]&&!toks[i+1].usado&&/^(de)$/.test(toks[i+1].n)&&toks[i+2]&&/^20\d\d$/.test(toks[i+2].n)){ano=+toks[i+2].n;usar(i+1,2);}
+    else if(toks[i+1]&&!toks[i+1].usado&&/^20\d\d$/.test(toks[i+1].n)){ano=+toks[i+1].n;usar(i+1);}
+  });
+  r.mes=mes;r.ano=ano;
+  // 4) forma de pagamento: cartão cadastrado, ou pix/dinheiro/débito = sem cartão
+  for(const c of [...S.cartoes].sort((a,b)=>b.nome.length-a.nome.length)){
+    const seq=normTxt(c.nome).split(/\s+/), i=acharSeq(seq);
+    if(i>=0){r.cartao=c.nome;usar(i,seq.length);usarPreposicaoAntes(i);break;}
+  }
+  if(r.cartao===undefined)for(const seq of [['sem','cartao'],['pix'],['dinheiro'],['debito'],['boleto'],['transferencia']]){
+    const i=acharSeq(seq);if(i>=0){r.cartao='Sem cartão';usar(i,seq.length);usarPreposicaoAntes(i);break;}
+  }
+  // 5) pessoas (pelo primeiro nome) e divisão
+  const div=['dividido','dividida','divido','div','rachado','rachada','metade'].map(p=>acharSeq([p])).find(i=>i>=0);
+  let comEntre=null;
+  if(div!==undefined){usar(div);
+    if(toks[div+1]&&!toks[div+1].usado&&['com','entre'].includes(toks[div+1].n)){comEntre=toks[div+1].n;usar(div+1);}}
+  const citadas=[];
+  S.pessoas.forEach(p=>{
+    const pn=normTxt(primeiroNome(p.nome)), i=acharSeq([pn]);
+    if(i>=0){citadas.push(p.nome);usar(i);usarPreposicaoAntes(i);
+      // "cindhy medeiros": o sobrenome também sai da descrição
+      const sob=normTxt(p.nome).split(/\s+/).slice(1);if(sob.length&&acharSeq(sob)===i+1)usar(i+1,sob.length);}
+  });
+  ['eu','meu','minha','mim'].forEach(w=>{const i=acharSeq([w]);if(i>=0){usar(i);if(pessoaPrincipal&&!citadas.includes(pessoaPrincipal))citadas.push(pessoaPrincipal);}});
+  if(div!==undefined){
+    const lista=[...citadas];
+    // "dividido com X": eu + X. "dividido entre X e Y": só quem foi citado.
+    if(pessoaPrincipal&&!lista.includes(pessoaPrincipal)&&comEntre!=='entre')lista.unshift(pessoaPrincipal);
+    if(lista.length>=2)r.divisao=lista;
+    else r.faltando.push('com quem dividir');
+  }else if(citadas.length===1)r.responsavel=citadas[0];
+  else if(citadas.length>1)r.divisao=citadas; // duas pessoas citadas = dividido entre elas
+  // 6) valor: o número com centavos ou "R$"; se não houver, o último número
+  if(r.valor==null){
+    const nums=livres().filter(t=>/^(r\$)?\d[\d.]*(,\d{1,2})?$/.test(t.n.replace(/[.,]$/,''))||/^\d+\.\d{1,2}$/.test(t.n));
+    const alvo=nums.find(t=>/,|r\$/.test(t.n))||nums[nums.length-1];
+    if(alvo){const v=parseValor(alvo.o.replace(/[.,]$/,''));if(v>0){r.valor=v;alvo.usado=true;
+      const i=toks.indexOf(alvo);if(i>0&&!toks[i-1].usado&&toks[i-1].n==='r$')toks[i-1].usado=true;}}
+  }
+  // 7) categoria escrita na frase ("lanches 30")
+  for(const c of [...S.categorias].sort((a,b)=>b.nome.length-a.nome.length)){
+    const seq=normTxt(c.nome).split(/\s+/), i=acharSeq(seq);
+    if(i>=0){r.categoria=c.nome;r.catOrigem='frase';
+      // só tira da descrição se sobrar outra palavra
+      if(livres().filter(t=>!PALAVRAS_VAZIAS.has(t.n)).length>seq.length){usar(i,seq.length);usarPreposicaoAntes(i);}
+      break;}
+  }
+  // 8) descrição = o que sobrou, sem as palavras de ligação nas pontas
+  let resto=livres().map(t=>t.o);
+  const vazia=w=>PALAVRAS_VAZIAS.has(normTxt(w));
+  resto=resto.filter(w=>!['gastei','paguei','comprei','reais','r$'].includes(normTxt(w)));
+  while(resto.length&&vazia(resto[0]))resto.shift();
+  while(resto.length&&vazia(resto[resto.length-1]))resto.pop();
+  r.desc=resto.join(' ').replace(/^[\-–,.:]+|[\-–,:]+$/g,'').trim();
+  if(!r.desc&&r.categoria)r.desc=r.categoria;
+  if(r.desc)r.desc=r.desc.charAt(0).toUpperCase()+r.desc.slice(1);
+  // 9) o que faltou vem do histórico, depois das dicas, depois do padrão
+  const h=r.desc?sugestaoDoHistorico(r.desc):null;
+  if(!r.categoria&&h&&S.categorias.some(c=>c.nome===h.categoria)){r.categoria=h.categoria;r.catOrigem='historico';}
+  if(!r.categoria){const d=categoriaPorDica(r.desc);if(d){r.categoria=d;r.catOrigem='dica';}}
+  if(r.cartao===undefined){
+    if(h&&(h.cartao==='Sem cartão'||S.cartoes.some(c=>c.nome===h.cartao))){r.cartao=h.cartao;r.cartaoOrigem='historico';}
+    // conta da casa (aluguel, luz…) se paga por boleto/pix, não no cartão
+    else if(r.categoria&&normTxt(r.categoria)==='contas da casa'){r.cartao='Sem cartão';r.cartaoOrigem='padrao';}
+    else{r.cartao=cartaoPadrao()||'Sem cartão';r.cartaoOrigem='padrao';}
+  }
+  // sem ninguém citado, é seu (o histórico não decide de quem é a compra)
+  if(!r.divisao&&!r.responsavel){
+    r.responsavel=pessoaPrincipal||(S.pessoas[0]&&S.pessoas[0].nome)||null;r.respOrigem='padrao';
+  }
+  r.historico=h;
+  if(!r.desc)r.faltando.push('descrição');
+  if(!(r.valor>0))r.faltando.push('valor');
+  if(!r.categoria)r.faltando.push('categoria');
+  return r;
+}
+
+let fraseAtual=null;
+function renderPreviaFrase(){
+  const txt=$('frase').value.trim(), el=$('frase-previa');
+  if(!txt){fraseAtual=null;setHtml(el,'');$('btn-frase-add').disabled=true;return;}
+  const r=fraseAtual=interpretarFrase(txt);
+  const chip=(rot,v,cls='')=>`<span class="fchip ${cls}"><b>${esc(rot)}</b>${esc(v)}</span>`;
+  const partes=[];
+  partes.push(chip('O quê',r.desc||'?',r.desc?'':'falta'));
+  partes.push(chip('Valor',r.valor>0?(r.tipo==='parcela'?`${r.parcelas}× ${fmt(r.valor)}`:fmt(r.valor)):'?',r.valor>0?'':'falta'));
+  if(r.parcelas>1&&r.tipo!=='parcela'&&r.valor>0)partes.push(chip('Parcelas',`${r.parcelas}× de ${fmt(dividirValor(r.valor,r.parcelas)[0])}`));
+  partes.push(chip('Categoria',r.categoria||'escolha',r.categoria?(r.catOrigem==='frase'?'':'auto'):'falta'));
+  partes.push(chip('Pagamento',r.cartao,r.cartaoOrigem?'auto':''));
+  if(r.divisao)partes.push(chip('Dividido',r.divisao.map(primeiroNome).join(' + ')));
+  else if(r.responsavel)partes.push(chip('De',primeiroNome(r.responsavel),r.respOrigem?'auto':''));
+  if(r.fixa)partes.push(chip('Fixa','todo mês'));
+  partes.push(chip('Mês',chaveExib(`${r.ano}-${pad2(r.mes)}`)));
+  const dica=r.faltando.length
+    ?`Falta: ${r.faltando.join(', ')}. ${r.faltando.includes('categoria')?'Escreva a categoria na frase ou toque em "Ajustar".':''}`
+    :(r.historico?`Categoria e cartão como das ${r.historico.vezes} vez(es) anteriores. Itens em dourado claro foram completados sozinhos.`:'Itens em dourado claro foram completados sozinhos — confira.');
+  setHtml(el,`<div class="fchips">${partes.join('')}</div><div class="field-hint">${esc(dica)}</div>`);
+  $('btn-frase-add').disabled=!!r.faltando.length;
+}
+/* Leva a interpretação para o formulário de sempre. */
+function frasePraFormulario(r){
+  resetForm();
+  $('desc').value=r.desc||'';
+  $('valor').value=r.valor>0?fmtNum(r.valor):'';
+  $('e_fixa').value=r.fixa?'sim':'nao';
+  $('mes_referencia').value=String(r.mes);
+  const anoSel=$('ano_referencia');
+  if(![...anoSel.options].some(o=>o.value===String(r.ano)))anoSel.add(new Option(String(r.ano),String(r.ano)));
+  anoSel.value=String(r.ano);
+  if(r.categoria)$('categoria').value=r.categoria;
+  const comCartao=r.cartao&&r.cartao!=='Sem cartão';
+  $('usa_cartao').value=comCartao?'sim':'nao';alternarCartao();
+  if(comCartao)$('cartao').value=r.cartao;
+  const ps=$('parcelas');
+  if(![...ps.options].some(o=>o.value===String(r.parcelas)))ps.add(new Option(`${r.parcelas}×`,String(r.parcelas)));
+  ps.value=String(r.parcelas);$('tipo_valor').value=r.tipo;
+  if(r.divisao){
+    $('is_dividida').value='sim';alternarDivisao();
+    document.querySelectorAll('#divisao-checkboxes .checkbox-item').forEach(el=>{
+      const on=r.divisao.includes(el.dataset.nome);el.classList.toggle('checked',on);el.setAttribute('aria-checked',on?'true':'false');});
+  }else{
+    $('is_dividida').value='nao';alternarDivisao();
+    if(r.responsavel)$('responsavel_unico').value=r.responsavel;
+  }
+  atualizarFormParcelas();
+}
+async function adicionarFrase(){
+  if(!fraseAtual||fraseAtual.faltando.length)return;
+  frasePraFormulario(fraseAtual);
+  const antes=itensPreparo.length;
+  await prepararLancamento();   // mesma validação e geração do formulário
+  if(itensPreparo.length>antes||fraseAtual.fixa){
+    $('frase').value='';renderPreviaFrase();$('frase').focus();
+  }
+}
+function ajustarFrase(){
+  if(!fraseAtual)return;
+  frasePraFormulario(fraseAtual);
+  $('mais-opcoes').open=true;
+  $('desc').scrollIntoView({behavior:'smooth',block:'center'});
+  toast('Formulário preenchido — ajuste e toque em "Adicionar à conferência"','info');
+}
+
 /* ═══════════════ EXTRATO ═══════════════ */
 function chipParcela(a,t){return t===1?'<span class="chip avista">À vista</span>':`<span class="chip parc">${pad2(a)}/${pad2(t)}</span>`;}
 function idsPendentes(){
@@ -3159,6 +3416,10 @@ on('receita-valor','keydown',e=>{if(e.key==='Enter')salvarReceita();});
 ['receita-mes','receita-ano'].forEach(id=>on(id,'change',()=>preencherValorReceita(chaveDoModalReceita())));
 on('receita-valor','input',()=>{$('receita-sugestao').style.display='none';});
 on('btn-preparar','click',prepararLancamento);
+on('frase','input',renderPreviaFrase);
+on('frase','keydown',e=>{if(e.key==='Enter'){e.preventDefault();adicionarFrase();}});
+on('btn-frase-add','click',adicionarFrase);
+on('btn-frase-ajustar','click',ajustarFrase);
 on('btn-salvar-tudo','click',salvarTudo);
 on('btn-limpar-conferencia','click',()=>{
   if(!itensPreparo.length||!confirm('Descartar todos os itens da conferência?'))return;
