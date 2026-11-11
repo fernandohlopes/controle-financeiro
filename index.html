@@ -1844,15 +1844,31 @@ window.addEventListener('resize',()=>{
 });
 
 /* ── A pagar: fatura por cartão, contas sem cartão uma a uma ── */
+/* Conta dividida (Aluguel, Luz…): a divisão serve só para saber a parte de
+   cada um — a conta é paga inteira. Em "A pagar" as partes viram uma linha
+   só, com o total; o mesmo nome (sem "(Div.)") e a mesma categoria, no
+   mesmo mês, são a mesma conta. Fatura de cartão já junta tudo sozinha. */
+const ehDividido=l=>/\(Div\.\)\s*$/.test(l.desc||'');
+const semDiv=d=>String(d||'').replace(/\s*\(Div\.\)\s*$/,'').trim();
+const chaveContaDividida=l=>ehDividido(l)&&(!l.cartao||l.cartao==='Sem cartão')
+  ?semDiv(l.desc).toLowerCase()+'|'+(l.categoria||''):null;
 function grupoPagamento(itens){
   const grupos=[];
-  const porCartao={};
+  const porCartao={}, divididas={};
   itens.forEach(l=>{
+    const k=chaveContaDividida(l);
     if(l.cartao&&l.cartao!=='Sem cartão'){
       (porCartao[l.cartao]=porCartao[l.cartao]||[]).push(l);
+    }else if(k){
+      (divididas[k]=divididas[k]||[]).push(l);
     }else{
       grupos.push({tipo:'conta',rotulo:l.desc,sub:`${l.responsavel} · ${l.categoria}`,itens:[l]});
     }
+  });
+  Object.values(divididas).forEach(g=>{
+    grupos.push({tipo:'conta',rotulo:semDiv(g[0].desc),
+      sub:(g.length>1?'Dividida: ':'Parte de ')+g.map(l=>`${primeiroNome(l.responsavel)} ${fmt(l.valor)}`).join(' · ')+` · ${g[0].categoria}`,
+      itens:g});
   });
   Object.keys(porCartao).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(c=>{
     const g=porCartao[c];
@@ -1868,8 +1884,12 @@ function renderPagar(A){
   if(!A.itens.length){
     setHtml(el,'<div class="settings-empty">Nada lançado neste mês.</div>');return;
   }
-  const pendentes=grupoPagamento(A.itens.filter(l=>!l.pago));
-  const pagos=grupoPagamento(A.itens.filter(l=>l.pago));
+  // conta dividida só conta como paga quando todas as partes estão pagas
+  const contaPaga={};
+  A.itens.forEach(l=>{const k=chaveContaDividida(l);if(k)contaPaga[k]=(contaPaga[k]!==false)&&!!l.pago;});
+  const estaPago=l=>{const k=chaveContaDividida(l);return k?contaPaga[k]:!!l.pago;};
+  const pendentes=grupoPagamento(A.itens.filter(l=>!estaPago(l)));
+  const pagos=grupoPagamento(A.itens.filter(estaPago));
   if(!pendentes.length&&pagos.length){
     // tudo pago: mostra só o desfazer, compacto
     setHtml(el,`<div class="settings-empty" style="border-style:solid;color:var(--green)">Tudo pago neste mês — ${fmt(A.pago)}</div>`+
@@ -1889,7 +1909,7 @@ function linhaPagamento(g,jaPago){
       <div class="settings-item-sub">${esc(g.sub)} · <b style="color:var(--text2)">${fmt(total)}</b></div>
     </div>
     <div class="settings-item-actions">
-      <button class="btn ${jaPago?'btn-ghost':'btn-success'} btn-sm" data-act="${jaPago?'despagar':'pagar'}" data-ids="${esc(ids)}" data-rotulo="${esc(g.rotulo)}">${jaPago?'Desfazer':'Pagar'}</button>
+      <button class="btn ${jaPago?'btn-ghost':'btn-success'} btn-sm" data-act="${jaPago?'despagar':'pagar'}" data-ids="${esc(ids)}" data-rotulo="${esc(g.rotulo)}" data-tipo="${g.tipo}">${jaPago?'Desfazer':'Pagar'}</button>
     </div></div>`;
 }
 
@@ -2528,14 +2548,16 @@ function alternarPago(id){
   marcarPagamento([id],!l.pago);
   toast(l.pago?`"${l.desc}" pago`:`"${l.desc}" voltou a pendente`,l.pago?'success':'info');
 }
-function pagarGrupo(idsTxt,rotulo,pago){
+function pagarGrupo(idsTxt,rotulo,pago,tipo){
   const ids=String(idsTxt||'').split(',').filter(Boolean);
   if(!ids.length)return;
   const total=ids.reduce((s,id)=>{const l=S.lancamentos.find(x=>x.id===id);return s+(l?l.valor:0);},0);
-  if(pago&&ids.length>1&&!confirm(`Marcar como pago: ${rotulo}\n${ids.length} lançamento(s) · ${fmt(total)}?`))return;
+  // fatura com vários lançamentos pede confirmação; conta (mesmo dividida) é uma conta só
+  if(pago&&tipo==='cartao'&&ids.length>1&&!confirm(`Marcar como pago: ${rotulo}\n${ids.length} lançamento(s) · ${fmt(total)}?`))return;
   if(!pago&&!confirm(`Desfazer o pagamento de ${rotulo}?`))return;
   const n=marcarPagamento(ids,pago);
-  toast(pago?`${n} lançamento(s) marcados como pagos`:`${n} lançamento(s) voltaram a pendente`,pago?'success':'info');
+  const nome=tipo==='conta'?`"${rotulo}"`:`${n} lançamento(s)`;
+  toast(pago?`${nome} pago — ${fmt(total)}`:`${nome} voltou a pendente`,pago?'success':'info');
 }
 function excluirGrupo(grupoId){
   const itens=S.lancamentos.filter(l=>l.grupoId===grupoId);if(!itens.length)return;
@@ -3075,8 +3097,8 @@ const ACOES={
   'excluir':el=>excluir(el.dataset.id),
   'excluir-grupo':el=>excluirGrupo(el.dataset.grupo),
   'alternar-pago':el=>alternarPago(el.dataset.id),
-  'pagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,true),
-  'despagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,false),
+  'pagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,true,el.dataset.tipo),
+  'despagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,false,el.dataset.tipo),
   'salvar-limite':el=>salvarLimite(el.dataset.id,el.dataset.nome),
   'ver-extrato':el=>abrirExtratoFiltrado({cat:el.dataset.cat,cartao:el.dataset.cartao,resp:el.dataset.resp}),
   'limpar-filtro':el=>limparFiltros([el.dataset.f]),
