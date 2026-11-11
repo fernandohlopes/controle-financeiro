@@ -215,7 +215,19 @@ select option{background:#1c1c1c}
 
 /* ── DASHBOARD ── */
 .dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.dash-filtro{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1 1 180px;max-width:260px}
+.dash-filtros{display:flex;gap:10px;flex:1 1 300px;max-width:520px}
+.dash-filtro{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 0}
+.card-dica{margin-left:auto;font-size:.56rem;letter-spacing:.06em;color:var(--text3);text-transform:none;opacity:.8;white-space:nowrap}
+.dash-grid .card-label{flex-wrap:wrap;row-gap:4px}
+/* linhas e partes que abrem o extrato filtrado */
+.clicavel{cursor:pointer;border-radius:6px;transition:background .15s;outline:none}
+.chart-row.clicavel{margin:-5px -8px;padding:5px 8px}
+.chart-row.clicavel:hover,.chart-row.clicavel:focus-visible{background:rgba(255,255,255,.04)}
+.chart-row.clicavel:hover .chart-label,.chart-row.clicavel:focus-visible .chart-label{color:var(--text)}
+.chart-row.clicavel .chart-label::after{content:' ›';color:var(--text3)}
+.seg-leg li.clicavel:hover,.seg-leg li.clicavel:focus-visible{background:rgba(255,255,255,.04)}
+.seg-leg li.clicavel .nome::after{content:' ›';color:var(--text3)}
+.clicavel:focus-visible{box-shadow:0 0 0 1px var(--gold)}
 .dash-filtro label{font-size:0.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono)}
 .dash-filtro .inp{padding:11px 12px}
 .dash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -612,9 +624,15 @@ details.filtros-box[open]>summary::after{content:'−'}
   <!-- Um filtro só, acima de tudo: todos os blocos mostram o mesmo mês. -->
   <div class="section-header dash-head">
     <div><div class="section-title">Painel</div><div class="section-sub" id="dash-sub">Visão do mês</div></div>
-    <div class="dash-filtro">
-      <label for="resumo-mes-filtro">Mês</label>
-      <select id="resumo-mes-filtro" class="inp"><option value="atual">Mês atual</option></select>
+    <div class="dash-filtros">
+      <div class="dash-filtro">
+        <label for="resumo-pessoa-filtro">Gastos de</label>
+        <select id="resumo-pessoa-filtro" class="inp"><option value="eu">Meus</option></select>
+      </div>
+      <div class="dash-filtro">
+        <label for="resumo-mes-filtro">Mês</label>
+        <select id="resumo-mes-filtro" class="inp"><option value="atual">Mês atual</option></select>
+      </div>
     </div>
   </div>
 
@@ -636,7 +654,7 @@ details.filtros-box[open]>summary::after{content:'−'}
     </div>
 
     <div class="kpi">
-      <div class="kpi-lab">Gastos do mês</div>
+      <div class="kpi-lab" id="lab-gastos">Gastos do mês</div>
       <div class="kpi-val" id="dash-total">R$ 0</div>
       <div class="kpi-delta" id="var-total"></div>
       <div class="spark" id="spark-total"></div>
@@ -662,39 +680,35 @@ details.filtros-box[open]>summary::after{content:'−'}
     <div class="card span-8">
       <div class="card-head">
         <div class="card-label">Evolução — gastos e receita</div>
-        <div class="legenda" aria-hidden="true">
-          <span><i class="sw" style="background:var(--s-gasto)"></i>Seus gastos</span>
-          <span><i class="sw" style="background:var(--s-outros)"></i>De terceiros</span>
-          <span><i class="sw linha" style="background:var(--s-receita)"></i>Sua receita</span>
-        </div>
+        <div class="legenda" id="legenda-evol" aria-hidden="true"></div>
       </div>
       <div class="grafico" id="chart-evol"></div>
       <details class="tabela-dados"><summary>Ver em tabela</summary><div id="tabela-evol"></div></details>
     </div>
 
     <div class="card span-4">
-      <div class="card-label">Por categoria</div>
+      <div class="card-label">Por categoria <span class="card-dica">toque para ver no extrato</span></div>
       <div class="chart-wrap" id="chart-cat"></div>
       <div class="nota" id="nota-cat"></div>
     </div>
 
     <div class="card span-6">
-      <div class="card-label">A pagar neste mês</div>
+      <div class="card-label">A pagar neste mês <span class="card-dica">fatura inteira</span></div>
       <div class="settings-list" id="lista-pagar"></div>
     </div>
 
     <div class="card span-6">
-      <div class="card-label">Orçamento por categoria</div>
+      <div class="card-label">Orçamento por categoria <span class="card-dica">todas as pessoas</span></div>
       <div class="chart-wrap" id="chart-orcamento"></div>
     </div>
 
     <div class="card span-6">
-      <div class="card-label">Por cartão</div>
+      <div class="card-label">Por cartão <span class="card-dica">toque para ver no extrato</span></div>
       <div id="seg-cartao"></div>
     </div>
 
     <div class="card span-6">
-      <div class="card-label">Por pessoa</div>
+      <div class="card-label">Por pessoa <span class="card-dica">todas · toque para ver no extrato</span></div>
       <div id="seg-pessoa"></div>
     </div>
 
@@ -1020,7 +1034,8 @@ const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxLksz1p96gEEAoTQ
    Com 25 s o app desistia antes da resposta e reenviava. */
 const TIMEOUT_MS=60000;
 const K={sessao:'cf_sessao',usuario:'cf_usuario',manter:'cf_manter',principal:'cf_pessoa_principal',
-  cache:'cf_cache',outbox:'cf_outbox',preparo:'cf_preparo',iosDica:'cf_ios_dica',ultCartao:'cf_ultimo_cartao'};
+  cache:'cf_cache',outbox:'cf_outbox',preparo:'cf_preparo',iosDica:'cf_ios_dica',ultCartao:'cf_ultimo_cartao',
+  filtroPessoa:'cf_filtro_pessoa'};
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 const S={lancamentos:[],receitas:{},pessoas:[],categorias:[],cartoes:[],recorrentes:[],atualizadoEm:null};
@@ -1455,12 +1470,31 @@ function chaveDesloc(chave,n){
   const p=proximoMes(m,a,n);
   return `${p.ano}-${pad2(p.mes)}`;
 }
-/* Tudo o que o painel precisa de um mês, calculado numa passada só. */
-function agregado(chave){
+/* ── "Gastos de": de quem são os gastos que o painel mostra ──
+   'eu' (padrão: a pessoa principal), 'todos' ou o nome de uma pessoa.
+   Fica guardado no aparelho. */
+let filtroPessoa='eu';
+try{filtroPessoa=store.get(K.filtroPessoa)||'eu';}catch(e){}
+/* nome da pessoa filtrada, ou null quando são todos */
+function pessoaDoFiltro(){
+  if(filtroPessoa==='todos')return null;
+  if(filtroPessoa==='eu')return pessoaPrincipal||null;
+  return S.pessoas.some(p=>p.nome===filtroPessoa)?filtroPessoa:(pessoaPrincipal||null);
+}
+const primeiroNome=n=>String(n||'').split(' ')[0];
+function rotuloQuem(){
+  const q=pessoaDoFiltro();
+  return !q?'de todos':(q===pessoaPrincipal?'seus':'de '+primeiroNome(q));
+}
+
+/* Tudo o que o painel precisa de um mês, calculado numa passada só.
+   Com `pessoa`, só os lançamentos dela entram. */
+function agregado(chave,pessoa=null){
   const r={chave,itens:[],total:0,pago:0,meu:0,meuPago:0,terceiros:0,
     porCat:{},porCartao:{},porPessoa:{},receita:S.receitas[chave]||0};
   S.lancamentos.forEach(l=>{
     if(l.mesChave!==chave)return;
+    if(pessoa&&l.responsavel!==pessoa)return;
     r.itens.push(l);r.total+=l.valor;
     if(l.pago)r.pago+=l.valor;
     if(ehMeu(l)){r.meu+=l.valor;if(l.pago)r.meuPago+=l.valor;}else r.terceiros+=l.valor;
@@ -1489,8 +1523,20 @@ function renderResumo(){
   const chaves=[...new Set([...S.lancamentos.map(l=>l.mesChave),...Object.keys(S.receitas),chaveHoje()].filter(Boolean))].sort().reverse();
   preencherSelect(sel,[['atual','Mês atual'],...chaves.map(k=>[k,chaveExib(k)])],sel.value||'atual');
 
+  // filtro "Gastos de": Meus · Todos · cada pessoa
+  const selP=$('resumo-pessoa-filtro');
+  preencherSelect(selP,[
+    ...(pessoaPrincipal?[['eu',`Meus (${primeiroNome(pessoaPrincipal)})`]]:[]),
+    ['todos','Todos'],
+    ...S.pessoas.filter(p=>p.nome!==pessoaPrincipal).map(p=>[p.nome,p.nome])
+  ],(filtroPessoa==='eu'&&!pessoaPrincipal)?'todos':filtroPessoa);
+
   const chave=mesResumo(), anterior=chaveDesloc(chave,-1);
+  /* A/B = todo mundo (saldo, a pagar, orçamento, por pessoa);
+     F/FB = só de quem está no filtro (os gráficos de gasto). */
+  const quem=pessoaDoFiltro();
   const A=agregado(chave), B=agregado(anterior);
+  const F=quem?agregado(chave,quem):A, FB=quem?agregado(anterior,quem):B;
   const rotAnt=chaveCurta(anterior);
   const varTxt=(at,ant,gastoRuim)=>variacao(at,ant,rotAnt,gastoRuim);
   $('dash-sub').textContent=chaveExib(chave);
@@ -1509,55 +1555,70 @@ function renderResumo(){
       `Os ${fmtCurto(A.terceiros)} de terceiros não entram no saldo.`
     : 'Escolha a "pessoa principal" em Ajustes para o saldo considerar só os seus gastos.';
 
-  // ── indicadores
-  const pctPago=A.total?A.pago/A.total*100:0;
-  setHtml($('barra-pag'),A.total
-    ? (A.pago?`<span class="seg-pago" style="flex:${A.pago}"></span>`:'')+(A.pendente?`<span class="seg-pendente" style="flex:${A.pendente}"></span>`:'')
+  // ── indicadores (de quem está no filtro)
+  const qRot=rotuloQuem();
+  $('lab-gastos').textContent=qRot==='seus'?'Seus gastos do mês':`Gastos ${qRot}`;
+  const pctPago=F.total?F.pago/F.total*100:0;
+  setHtml($('barra-pag'),F.total
+    ? (F.pago?`<span class="seg-pago" style="flex:${F.pago}"></span>`:'')+(F.pendente?`<span class="seg-pendente" style="flex:${F.pendente}"></span>`:'')
     : '<span style="flex:1;background:#232323"></span>');
-  $('barra-pag').setAttribute('aria-label',A.total?`Pago ${fmt(A.pago)} (${Math.round(pctPago)}%), pendente ${fmt(A.pendente)}`:'Nenhum lançamento');
-  setHtml($('legenda-pag'),A.total
+  $('barra-pag').setAttribute('aria-label',F.total?`Pago ${fmt(F.pago)} (${Math.round(pctPago)}%), pendente ${fmt(F.pendente)}`:'Nenhum lançamento');
+  setHtml($('legenda-pag'),F.total
     ? `<span><i class="seg-pago"></i>Pago ${Math.round(pctPago)}%</span><span><i class="seg-pendente"></i>Pendente ${100-Math.round(pctPago)}%</span>`
     : '');
-  $('dash-total').textContent=fmt(A.total);
-  $('dash-pago').textContent=fmt(A.pago);
-  $('dash-pendente').textContent=fmt(A.pendente);
-  const vt=varTxt(A.total,B.total,true);
+  $('dash-total').textContent=fmt(F.total);
+  $('dash-pago').textContent=fmt(F.pago);
+  $('dash-pendente').textContent=fmt(F.pendente);
+  const vt=varTxt(F.total,FB.total,true);
   $('var-total').textContent=vt.txt||'—';$('var-total').className='kpi-delta '+vt.cls;
-  $('var-pago').textContent=A.total?`${Math.round(pctPago)}% do mês`:'nada lançado';
+  $('var-pago').textContent=F.total?`${Math.round(pctPago)}% do mês`:'nada lançado';
   $('var-pago').className='kpi-delta';
-  const abertos=A.itens.filter(l=>!l.pago).length;
-  $('var-pendente').textContent=A.pendente?`${abertos} lançamento(s) em aberto`:(A.total?'✓ tudo pago':'—');
-  $('var-pendente').className='kpi-delta'+(A.pendente||!A.total?'':' desce');
-  sparkline('spark-total',Array.from({length:6},(_,i)=>{const k=chaveDesloc(chave,i-5);return[k,agregado(k).total];}));
+  const abertos=F.itens.filter(l=>!l.pago).length;
+  $('var-pendente').textContent=F.pendente?`${abertos} lançamento(s) em aberto`:(F.total?'✓ tudo pago':'—');
+  $('var-pendente').className='kpi-delta'+(F.pendente||!F.total?'':' desce');
+  sparkline('spark-total',Array.from({length:6},(_,i)=>{const k=chaveDesloc(chave,i-5);return[k,agregado(k,quem).total];}));
 
   renderPagar(A);
 
-  // ── onde está gastando mais
-  const cats=Object.entries(A.porCat).sort((a,b)=>b[1]-a[1]);
+  // ── onde está gastando mais (cada linha abre o extrato daquela categoria)
+  const cats=Object.entries(F.porCat).sort((a,b)=>b[1]-a[1]);
   chart('chart-cat',cats.map(([k,v])=>{
-    const ant=B.porCat[k]||0;
+    const ant=FB.porCat[k]||0;
     const d=varTxt(v,ant,true);
     return [k,v,false,d.txt?`${d.txt}`:'',d.cls];
-  }),'Nenhum gasto neste mês.');
+  }),'Nenhum gasto neste mês.',{campo:'cat'});
   // categoria que mais subiu em reais
   let maiorAlta=null;
   cats.forEach(([k,v])=>{
-    const delta=v-(B.porCat[k]||0);
+    const delta=v-(FB.porCat[k]||0);
     if(delta>0&&(!maiorAlta||delta>maiorAlta.delta))maiorAlta={k,delta,v};
   });
   $('nota-cat').textContent=cats.length
     ? (maiorAlta
-        ? `${cats[0][0]} é ${Math.round(cats[0][1]/(A.total||1)*100)}% do mês. Mais subiu contra ${rotAnt}: ${maiorAlta.k} (+${fmt(maiorAlta.delta)}).`
-        : `${cats[0][0]} é ${Math.round(cats[0][1]/(A.total||1)*100)}% do mês. Nada subiu em relação a ${rotAnt}.`)
+        ? `${cats[0][0]} é ${Math.round(cats[0][1]/(F.total||1)*100)}% do mês. Mais subiu contra ${rotAnt}: ${maiorAlta.k} (+${fmt(maiorAlta.delta)}).`
+        : `${cats[0][0]} é ${Math.round(cats[0][1]/(F.total||1)*100)}% do mês. Nada subiu em relação a ${rotAnt}.`)
     : '';
 
   renderOrcamento(A);
-  renderTop(A);
-  renderFuturo(chave);
+  renderTop(F);
+  renderFuturo(chave,quem);
 
-  segmentos('seg-cartao',A.porCartao,S.cartoes,'Nenhum gasto neste mês.');
-  segmentos('seg-pessoa',A.porPessoa,S.pessoas,'Nenhum gasto neste mês.');
-  graficoEvolucao(chave);
+  segmentos('seg-cartao',F.porCartao,S.cartoes,'Nenhum gasto neste mês.','cartao');
+  segmentos('seg-pessoa',A.porPessoa,S.pessoas,'Nenhum gasto neste mês.','resp');
+  graficoEvolucao(chave,quem);
+}
+
+/* Clique numa categoria / cartão / pessoa do painel: abre o extrato já
+   filtrado pelo mesmo mês e pela mesma pessoa do painel. */
+let extratoPendente=null;
+function abrirExtratoFiltrado(f){
+  const quem=pessoaDoFiltro();
+  extratoPendente={resp:f.resp||quem||'Todos',cat:f.cat||'Todos',cartao:f.cartao||'Todos'};
+  filtroMesUsuario=mesResumo();
+  $('f_busca').value='';$('f_situacao').value='Todos';
+  editandoId=null;
+  mudarPagina('extrato');
+  const box=$('filtros-box');if(box)box.open=true; // no celular, mostra quais filtros estão ativos
 }
 
 /* ═══════════════ GRÁFICOS DO PAINEL ═══════════════
@@ -1645,27 +1706,42 @@ function colunas(el,meses,{altura=230,corLinha=null,rotular='atual'}={}){
 
 /* Evolução: 8 meses antes e 3 depois do escolhido (no celular, 5 e 2). Colunas = gastos do mês
    (seus + de terceiros, empilhados); linha = sua receita. */
-function graficoEvolucao(chave){
+/* Três modos, conforme o filtro "Gastos de":
+   - Todos: seus gastos + de terceiros empilhados, linha da sua receita;
+   - Meus: só os seus gastos, linha da sua receita (dá para ver a sobra);
+   - outra pessoa: só os gastos dela, sem receita (a receita é só sua). */
+function graficoEvolucao(chave,quem=null){
   const el=$('chart-evol');
   const hoje=chaveHoje(), meses=[], estreito=(el.clientWidth||600)<480;
+  const modo=!quem?'todos':(quem===pessoaPrincipal?'meus':'pessoa');
+  const comReceita=modo!=='pessoa';
+  const rotGasto=modo==='pessoa'?`Gastos de ${primeiroNome(quem)}`:(modo==='todos'&&!pessoaPrincipal?'Gastos':'Seus gastos');
   for(let off=estreito?-5:-8;off<=(estreito?2:3);off++){
-    const k=chaveDesloc(chave,off), a=agregado(k);
-    const meu=pessoaPrincipal?a.meu:a.total, outros=pessoaPrincipal?a.terceiros:0;
-    const rec=S.receitas[k];
+    const k=chaveDesloc(chave,off);
+    let meu,outros;
+    if(modo==='todos'){const a=agregado(k);meu=pessoaPrincipal?a.meu:a.total;outros=pessoaPrincipal?a.terceiros:0;}
+    else{meu=agregado(k,quem).total;outros=0;}
+    const rec=comReceita?S.receitas[k]:undefined;
     meses.push({k,meu,outros,rec,
       partes:[{v:meu,cor:'var(--s-gasto)'},{v:outros,cor:'var(--s-outros)'}],
       linha:rec!=null?rec:null,
       estado:k===chave?'atual':(k>hoje?'futuro':''),
-      tip:`${chaveExib(k)}${k>hoje?' (previsto)':''}\nSeus gastos: ${fmt(meu)}\nDe terceiros: ${fmt(outros)}\nSua receita: ${rec!=null?fmt(rec):'—'}`+
-          (rec!=null?`\nSaldo: ${fmt(rec-meu)}`:'')});
+      tip:`${chaveExib(k)}${k>hoje?' (previsto)':''}\n${rotGasto}: ${fmt(meu)}`+
+          (modo==='todos'&&pessoaPrincipal?`\nDe terceiros: ${fmt(outros)}`:'')+
+          (comReceita?`\nSua receita: ${rec!=null?fmt(rec):'—'}`+(rec!=null?`\nSaldo: ${fmt(rec-meu)}`:''):'')});
   }
+  setHtml($('legenda-evol'),
+    `<span><i class="sw" style="background:var(--s-gasto)"></i>${esc(rotGasto)}</span>`+
+    (modo==='todos'&&pessoaPrincipal?'<span><i class="sw" style="background:var(--s-outros)"></i>De terceiros</span>':'')+
+    (comReceita?'<span><i class="sw linha" style="background:var(--s-receita)"></i>Sua receita</span>':''));
   const vazio=meses.every(m=>!m.meu&&!m.outros&&m.rec==null);
   setHtml(el,vazio
     ?'<div class="empty-state"><span class="icon">◦</span><p>Nenhum lançamento nesse período.</p></div>'
-    :colunas(el,meses,{corLinha:'var(--s-receita)',altura:(el.clientWidth||0)>560?330:230}));
+    :colunas(el,meses,{corLinha:comReceita?'var(--s-receita)':null,altura:(el.clientWidth||0)>560?330:230}));
   // a mesma informação em tabela (para leitor de tela e para quem prefere números)
-  setHtml($('tabela-evol'),`<div class="tabela-scroll"><table class="tabela"><thead><tr><th>Mês</th><th class="num">Seus gastos</th><th class="num">Terceiros</th><th class="num">Receita</th><th class="num">Saldo</th></tr></thead><tbody>`+
-    meses.map(m=>`<tr class="${m.estado==='atual'?'atual':''}"><td>${esc(chaveMedia(m.k))}${m.estado==='futuro'?' ·':''}</td><td class="num">${fmt(m.meu)}</td><td class="num">${fmt(m.outros)}</td><td class="num">${m.rec!=null?fmt(m.rec):'—'}</td><td class="num">${m.rec!=null?fmt(m.rec-m.meu):'—'}</td></tr>`).join('')+
+  const colOutros=modo==='todos'&&pessoaPrincipal;
+  setHtml($('tabela-evol'),`<div class="tabela-scroll"><table class="tabela"><thead><tr><th>Mês</th><th class="num">${esc(rotGasto)}</th>${colOutros?'<th class="num">Terceiros</th>':''}${comReceita?'<th class="num">Receita</th><th class="num">Saldo</th>':''}</tr></thead><tbody>`+
+    meses.map(m=>`<tr class="${m.estado==='atual'?'atual':''}"><td>${esc(chaveMedia(m.k))}${m.estado==='futuro'?' ·':''}</td><td class="num">${fmt(m.meu)}</td>${colOutros?`<td class="num">${fmt(m.outros)}</td>`:''}${comReceita?`<td class="num">${m.rec!=null?fmt(m.rec):'—'}</td><td class="num">${m.rec!=null?fmt(m.rec-m.meu):'—'}</td>`:''}</tr>`).join('')+
     '</tbody></table></div>');
 }
 
@@ -1697,7 +1773,7 @@ function renderMedidorSaldo(A){
 
 /* Parte de um todo: barra segmentada de 28px + lista (que é também a
    tabela dos valores). Até 6 partes; o resto vira "Outros". */
-function segmentos(elId,mapa,cadastro,vazio){
+function segmentos(elId,mapa,cadastro,vazio,campo){
   const el=$(elId);
   let itens=Object.entries(mapa).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
   const total=itens.reduce((s,e)=>s+e[1],0);
@@ -1708,9 +1784,11 @@ function segmentos(elId,mapa,cadastro,vazio){
   setHtml(el,`<div class="seg-bar" role="img" aria-label="${esc(itens.map(([n,v])=>`${n} ${fmt(v)} (${Math.round(v/total*100)}%)`).join(', '))}">`+
     itens.map(([n,v])=>{
       const p=v/total*100, cabe=larg*p/100>=44; // só escreve a % se couber com folga
-      return `<span tabindex="0" style="flex:${v};background:${cor(n)}" data-tip="${esc(`${n}\n${fmt(v)} · ${p.toFixed(0)}%`)}">${cabe?Math.round(p)+'%':''}</span>`;
+      return `<span tabindex="0" style="flex:${v};background:${cor(n)}"${abre(n)} data-tip="${esc(`${n}\n${fmt(v)} · ${p.toFixed(0)}%`)}">${cabe?Math.round(p)+'%':''}</span>`;
     }).join('')+'</div>'+
-    `<ul class="seg-leg">`+itens.map(([n,v])=>`<li><i class="sw" style="background:${cor(n)}"></i><span class="nome">${esc(n)}</span><span class="v">${fmt(v)}</span><span class="p">${Math.round(v/total*100)}%</span></li>`).join('')+'</ul>');
+    `<ul class="seg-leg">`+itens.map(([n,v])=>`<li${abre(n)?` class="clicavel" tabindex="0" role="button"`+abre(n):''}><i class="sw" style="background:${cor(n)}"></i><span class="nome">${esc(n)}</span><span class="v">${fmt(v)}</span><span class="p">${Math.round(v/total*100)}%</span></li>`).join('')+'</ul>');
+  // "Outros" junta vários: não abre o extrato
+  function abre(n){return campo&&n!=='Outros'?` data-act="ver-extrato" data-${campo}="${esc(n)}"`:'';}
 }
 
 /* Dica ao passar o mouse (ou ao focar pelo teclado) em qualquer [data-tip]. */
@@ -1835,9 +1913,9 @@ function renderTop(A){
 }
 
 /* ── Já comprometido: o que as compras de hoje ainda vão cobrar ── */
-function renderFuturo(chave){
+function renderFuturo(chave,quem=null){
   const porMes={};
-  S.lancamentos.forEach(l=>{if(l.mesChave>chave)porMes[l.mesChave]=(porMes[l.mesChave]||0)+l.valor;});
+  S.lancamentos.forEach(l=>{if(l.mesChave>chave&&(!quem||l.responsavel===quem))porMes[l.mesChave]=(porMes[l.mesChave]||0)+l.valor;});
   const totalTudo=Object.values(porMes).reduce((s,v)=>s+v,0);
   const qtdMeses=Object.keys(porMes).length;
   $('dash-futuro').textContent=fmt(totalTudo);
@@ -1852,15 +1930,16 @@ function renderFuturo(chave){
     ?colunas(el,meses,{altura:180,rotular:'max'})
     :'<div class="empty-state"><span class="icon">◦</span><p>Nada parcelado para os próximos meses.</p></div>');
   $('nota-futuro').textContent=totalTudo
-    ? `${fmt(totalTudo)} em parcelas de compras já feitas, de todas as pessoas. Cobranças fixas não entram: elas são criadas quando o mês chega.`
+    ? `${fmt(totalTudo)} em parcelas de compras já feitas${!quem?', de todas as pessoas':(quem===pessoaPrincipal?', só suas':`, só de ${primeiroNome(quem)}`)}. Cobranças fixas não entram: elas são criadas quando o mês chega.`
     : '';
 }
-function chart(elId,pares,vazio){
+/* {campo:'cat'} torna cada linha um botão que abre o extrato filtrado */
+function chart(elId,pares,vazio,{campo=null}={}){
   const el=$(elId);
   if(!pares.length){setHtml(el,`<div class="empty-state"><span class="icon">◦</span><p>${esc(vazio)}</p></div>`);return;}
   const maior=Math.max(...pares.map(p=>p[1]))||1;
   const temDestaque=pares.some(p=>p[2]);
-  setHtml(el,pares.map(([k,v,d,sub,cls])=>`<div class="chart-row${d?' destaque':''}${temDestaque?' com-destaque':''}">
+  setHtml(el,pares.map(([k,v,d,sub,cls])=>`<div class="chart-row${d?' destaque':''}${temDestaque?' com-destaque':''}${campo?' clicavel':''}"${campo?` data-act="ver-extrato" data-${campo}="${esc(k)}" tabindex="0" role="button" aria-label="Ver ${esc(k)} no extrato: ${esc(fmt(v))}"`:''}>
       <span class="chart-label">${esc(k)}</span>
       <span class="chart-val">${fmt(v)}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,v/maior*100).toFixed(1)}%"></div></div>
@@ -2242,9 +2321,11 @@ function renderExtrato(){
   const chaves=[...new Set(S.lancamentos.map(l=>l.mesChave).filter(Boolean))].sort().reverse();
   const fm=$('f_mes');
   preencherSelect(fm,[['Todos','Todos os meses'],...chaves.map(k=>[k,chaveExib(k)])],(alvo==='Todos'||chaves.includes(alvo))?alvo:'Todos');
-  preencherSelect($('f_resp'),[['Todos','Todos responsáveis'],...nomes(S.pessoas)],$('f_resp').value||'Todos');
-  preencherSelect($('f_cartao'),[['Todos','Todos os cartões'],...nomes([...S.cartoes,{nome:'Sem cartão'}])],$('f_cartao').value||'Todos');
-  preencherSelect($('f_cat'),[['Todos','Todas categorias'],...nomes(S.categorias)],$('f_cat').value||'Todos');
+  // vindo de um clique no painel: aplica os filtros pedidos (uma vez)
+  const pedido=extratoPendente;extratoPendente=null;
+  preencherSelect($('f_resp'),[['Todos','Todos responsáveis'],...nomes(S.pessoas,pedido&&pedido.resp!=='Todos'?pedido.resp:null)],pedido?pedido.resp:($('f_resp').value||'Todos'));
+  preencherSelect($('f_cartao'),[['Todos','Todos os cartões'],...nomes([...S.cartoes,{nome:'Sem cartão'}],pedido&&pedido.cartao!=='Todos'?pedido.cartao:null)],pedido?pedido.cartao:($('f_cartao').value||'Todos'));
+  preencherSelect($('f_cat'),[['Todos','Todas categorias'],...nomes(S.categorias,pedido&&pedido.cat!=='Todos'?pedido.cat:null)],pedido?pedido.cat:($('f_cat').value||'Todos'));
 
   const rotuloSit={pago:'só pagos',pendente:'só pendentes'}[$('f_situacao').value]||'';
   const ativos=[fm.value,$('f_resp').value,$('f_cartao').value,$('f_cat').value,rotuloSit].filter(v=>v&&v!=='Todos');
@@ -2958,7 +3039,8 @@ const ACOES={
   'alternar-pago':el=>alternarPago(el.dataset.id),
   'pagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,true),
   'despagar':el=>pagarGrupo(el.dataset.ids,el.dataset.rotulo,false),
-  'salvar-limite':el=>salvarLimite(el.dataset.id,el.dataset.nome)
+  'salvar-limite':el=>salvarLimite(el.dataset.id,el.dataset.nome),
+  'ver-extrato':el=>abrirExtratoFiltrado({cat:el.dataset.cat,cartao:el.dataset.cartao,resp:el.dataset.resp})
 };
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');
@@ -2973,7 +3055,9 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key!=='Enter'&&e.key!==' ')return;
   const el=e.target.closest&&e.target.closest('[data-act="toggle-pessoa"]');
-  if(el){e.preventDefault();togglePessoa(el);}
+  if(el){e.preventDefault();togglePessoa(el);return;}
+  const ver=e.target.closest&&e.target.closest('[data-act="ver-extrato"]');
+  if(ver){e.preventDefault();ACOES['ver-extrato'](ver);}
 });
 // Campos de dinheiro: ao sair do campo, mostra no formato 1.234,56.
 document.addEventListener('focusout',e=>{
@@ -2997,6 +3081,7 @@ on('btn-sair-todos','click',()=>sair({todos:true}));
 on('btn-recarregar','click',()=>recarregar({silencioso:false,forcar:true}));
 on('btn-forcar-sync','click',()=>{processarFila({silencioso:false}).then(()=>recarregar({silencioso:false,forcar:true}));});
 on('resumo-mes-filtro','change',render);
+on('resumo-pessoa-filtro','change',e=>{filtroPessoa=e.target.value;store.set(K.filtroPessoa,filtroPessoa);render();});
 on('btn-abrir-receita','click',abrirModalReceita);
 on('btn-salvar-receita','click',salvarReceita);
 on('btn-fechar-receita','click',fecharModalReceita);
