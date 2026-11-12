@@ -353,20 +353,52 @@ details.mais[open]>summary::after{content:'−'}
 
 /* ── LISTA DE LANÇAMENTOS ──
    Card empilhado no celular; no desktop, só o Extrato vira tabela. */
-.lancs{display:flex;flex-direction:column;gap:9px}
+/* ── Linha de lançamento (celular) ──
+   [ícone] Descrição                 R$ 99,90
+           Nubank · Fernando · 3/10   pendente
+   Ações aparecem ao tocar ou deslizar para a esquerda. */
+.lancs{display:flex;flex-direction:column;gap:6px}
 .lanc-head{display:none}
 .lanc{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:13px 14px;display:grid;gap:7px;
-  grid-template-columns:1fr auto;
-  grid-template-areas:"desc valor" "meta meta" "acoes acoes";
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:11px 12px;display:grid;column-gap:12px;row-gap:3px;align-items:center;
+  grid-template-columns:38px minmax(0,1fr) auto;
+  grid-template-areas:"ico desc valor" "ico meta valor" "acoes acoes acoes";
+  cursor:pointer;transition:transform .18s ease,border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;
 }
-.lanc.leitura{grid-template-areas:"desc valor" "meta meta"}
-.lanc-desc{grid-area:desc;font-size:0.92rem;color:var(--text);font-weight:500;line-height:1.35;word-break:break-word}
-.lanc-valor{grid-area:valor;font-family:var(--serif);font-size:1.05rem;font-weight:700;white-space:nowrap;text-align:right}
-.lanc-meta{grid-area:meta;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.lanc-acoes{grid-area:acoes;display:flex;gap:6px;margin-top:2px;justify-content:flex-end;flex-wrap:wrap}
-.lanc-acoes .btn{padding:7px 12px;min-height:34px;font-size:0.64rem;letter-spacing:.04em}
+.lanc:active{background:#151515}
+.lanc.aberto{border-color:var(--border2);background:#141414}
+.lanc.leitura{cursor:default;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"desc valor" "meta meta"}
+.lanc-ico,.com-ico>.lanc-ico{grid-area:ico;width:38px;height:38px;border-radius:50%;background:var(--card2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;line-height:1;flex-shrink:0}
+.lanc-desc{grid-area:desc;font-size:0.95rem;color:var(--text);font-weight:500;line-height:1.3;word-break:break-word}
+.lanc-valor{grid-area:valor;font-size:1rem;white-space:nowrap;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.lanc-meta{grid-area:meta;display:flex;flex-wrap:wrap;align-items:center;font-family:var(--sans);font-size:.76rem;color:var(--text3);line-height:1.4}
+/* detalhes em texto corrido, separados por ponto */
+.lanc .lanc-meta .chip{background:none;border:none;padding:0;border-radius:0;font-family:var(--sans);font-size:.76rem;color:var(--text3);letter-spacing:0}
+.lanc .lanc-meta .chip::before{content:'·';margin:0 6px;color:var(--border2)}
+.lanc .lanc-meta .chip.parc{color:var(--gold2)}
+.lanc .lanc-meta .chip.avista,.lanc .lanc-meta .chip-cat{display:none}
+/* o primeiro detalhe visível não leva ponto na frente */
+.lanc .lanc-meta .chip-mes::before,.lancs.sem-mes .lanc-meta .chip-mes+.chip::before,
+.lancs.sem-mes .lanc-meta .chip-mes+.avista+.chip::before{content:none}
+.lanc-acoes{grid-area:acoes;display:none;gap:6px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap}
+.lanc.aberto .lanc-acoes,.lanc.conf .lanc-acoes{display:flex;animation:fadeIn .18s ease}
+.lanc-acoes .btn{padding:7px 14px;min-height:36px;font-size:0.78rem}
+/* situação: texto pequeno sob o valor, que também alterna pago/pendente */
+.st{background:none;border:none;padding:2px 0;font-family:var(--sans);font-size:.7rem;font-weight:500;cursor:pointer;letter-spacing:0}
+.st-ok{color:var(--green)}.st-pend{color:var(--amber)}
+.tag{display:inline-block;font-family:var(--mono);font-size:.6rem;letter-spacing:.04em;padding:1px 6px;border-radius:4px;vertical-align:2px;margin-left:4px;
+  color:var(--gold2);background:var(--gold-dim);border:1px solid rgba(201,168,76,.2)}
+.tag.pend{color:var(--amber);background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25)}
+.grupo-mes{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 4px 4px;
+  font-family:var(--sans);font-size:.8rem;font-weight:600;color:var(--text2)}
+.grupo-mes:first-child{padding-top:2px}
+.grupo-mes span:last-child{font-weight:400;font-size:.74rem;color:var(--text3)}
+.grupo-mes b{color:var(--text2);font-weight:600}
+.com-ico{flex-wrap:nowrap}
+.com-ico .settings-item-actions{margin-left:0}
+.ico-inline{margin-right:7px}
 .chip{font-family:var(--mono);font-size:0.65rem;padding:3px 9px;border-radius:20px;background:var(--card2);color:var(--text3);border:1px solid var(--border);white-space:nowrap}
 .chip.resp{background:rgba(201,168,76,.1);color:var(--gold2);border-color:rgba(201,168,76,.22)}
 .chip.parc{background:var(--gold-dim);color:var(--gold2);border-color:rgba(201,168,76,.2);border-radius:5px}
@@ -477,6 +509,39 @@ details.filtros-box[open]>summary::after{content:'−'}
 .leitura-nome{font-family:var(--serif);font-size:1.7rem;font-weight:700;color:var(--gold)}
 .leitura-sub{font-family:var(--mono);font-size:0.7rem;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:5px}
 
+/* ── Botão "+" flutuante (abre o Lançar rápido) ── */
+.fab{position:fixed;right:16px;bottom:calc(var(--tabbar-h) + var(--safe-b) + 16px);z-index:210;
+  width:56px;height:56px;border-radius:18px;border:none;cursor:pointer;
+  background:linear-gradient(145deg,var(--gold2),var(--gold));color:#0a0a0a;
+  box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 1px rgba(232,200,122,.35);
+  display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .2s}
+.fab svg{width:26px;height:26px;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;fill:none}
+.fab:active{transform:scale(.94)}
+.fab:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+.fab.oculto{opacity:0;pointer-events:none;transform:scale(.8)}
+/* a lista não fica escondida atrás do botão */
+.container{padding-bottom:calc(var(--tabbar-h) + var(--safe-b) + 88px)}
+
+/* ═══════════════ TIPOGRAFIA ═══════════════
+   Texto corrido, rótulos, botões e campos em sans (lê melhor); a mono fica
+   só para etiquetas pequenas em caixa-alta e números que se alinham; a
+   serifada, só para títulos e a marca. Valores em sans semibold. */
+input,select,textarea,.btn,.field-hint,.nota,.settings-item-name,.settings-item-sub,.settings-empty,
+.chart-label,.checkbox-item,.lembrar,.lembrar-dica,#toast,.banner,#ios-dica,.account-value,.empty-state p,
+.hero-split,.medidor-txt,.legenda,.legenda-pag,.seg-leg li,.kpi-delta,.filtro-chip,.btn-limpar,
+details.mais>summary,details.filtros-box>summary,details.edit-div>summary,details.tabela-dados>summary,
+.fchip,.parcela-badge,.grupo-header,.auth-err,.tabela,#dash-tip,.lanc-sub{font-family:var(--sans)}
+.btn{letter-spacing:.02em;text-transform:none;font-weight:600;font-size:.86rem}
+.btn-sm{font-size:.76rem}
+details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-transform:none;letter-spacing:0;font-size:.84rem;font-weight:500}
+.settings-item-name{font-size:.9rem;font-weight:500}
+.settings-item-sub,.field-hint,.nota{font-size:.76rem}
+.chart-label{font-size:.82rem}
+.checkbox-item{font-size:.88rem}
+#toast{font-size:.86rem}
+.lanc-valor,.mini-val,.saldo-valor,.valor-forte{font-family:var(--sans);font-weight:650;letter-spacing:-.01em}
+.saldo-valor{font-weight:600}
+
 /* ═══════════════ DESKTOP (900px+) ═══════════════ */
 @media(min-width:900px){
   body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -545,15 +610,27 @@ details.filtros-box[open]>summary::after{content:'−'}
   .bar-track{grid-column:auto}
   .chart-sub{grid-column:1/-1}
   /* só o Extrato vira tabela; conferência e link pessoal seguem em cards */
+  /* tabela: ícone · descrição · mês · parcela · pessoa · cartão · categoria · valor · ações */
   .lanc-head{
-    display:grid;grid-template-columns:2.2fr 1fr .8fr 1.1fr 1fr 1fr .9fr 226px;
+    display:grid;grid-template-columns:34px 2.2fr .9fr .7fr .9fr 1fr 1.1fr 1fr 190px;
     gap:12px;padding:0 14px 10px;font-family:var(--mono);font-size:0.62rem;
     letter-spacing:.12em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);
   }
   #lista-extrato .lanc{
-    grid-template-columns:2.2fr 1fr .8fr 1.1fr 1fr 1fr .9fr 226px;
-    grid-template-areas:none;align-items:center;gap:12px;padding:12px 14px;
+    grid-template-columns:34px 2.2fr .9fr .7fr .9fr 1fr 1.1fr 1fr 190px;
+    grid-template-areas:none;align-items:center;gap:12px;padding:9px 14px;cursor:default;
+    border-radius:8px;
   }
+  #lista-extrato .lanc:hover{background:#141414}
+  #lista-extrato .lanc-ico{width:32px;height:32px;font-size:.95rem}
+  #lista-extrato .lanc .lanc-meta .chip{font-size:.8rem;color:var(--text2)}
+  #lista-extrato .lanc .lanc-meta .chip::before{content:none}
+  #lista-extrato .lanc .lanc-meta .chip.avista,#lista-extrato .lanc .lanc-meta .chip-cat{display:inline}
+  #lista-extrato .lanc .lanc-meta .chip.avista{color:var(--text3)}
+  #lista-extrato .lanc .lanc-meta .chip.parc{color:var(--gold2)}
+  #lista-extrato .lanc-acoes{display:flex;opacity:.55;transition:opacity .15s;margin-top:0}
+  #lista-extrato .lanc:hover .lanc-acoes,#lista-extrato .lanc:focus-within .lanc-acoes{opacity:1}
+  #lista-extrato .grupo-mes{padding:16px 14px 6px}
   #lista-extrato .lanc>*{grid-area:auto!important}
   #lista-extrato .lanc-meta{display:contents}
   #lista-extrato .lanc-meta>*{min-width:0;max-width:100%;justify-self:start;overflow:hidden;text-overflow:ellipsis}
@@ -571,7 +648,9 @@ details.filtros-box[open]>summary::after{content:'−'}
   #lista-extrato .lanc-edit .edit-botoes .btn{flex:0 0 160px!important}
   .modal-overlay{align-items:center}
   .modal-box{border-radius:var(--radius-lg);padding:30px;max-width:430px;animation:none}
-  #toast{left:auto;right:26px;bottom:26px;max-width:400px}
+  #toast{left:auto;right:26px;bottom:100px;max-width:400px}
+  .fab{right:28px;bottom:28px}
+  .container{padding-bottom:110px}
   .banner{bottom:0;justify-content:center}
 }
 </style>
@@ -945,7 +1024,7 @@ details.filtros-box[open]>summary::after{content:'−'}
     </div>
     <button class="btn btn-ghost btn-full btn-sm" id="btn-exportar" style="margin-bottom:16px">Exportar CSV</button>
     <div class="lanc-head">
-      <span>Descrição</span><span>Mês</span><span>Parcela</span><span>Responsável</span><span>Cartão</span><span>Categoria</span><span style="text-align:right">Valor</span><span></span>
+      <span></span><span>Descrição</span><span>Mês</span><span>Parcela</span><span>Pessoa</span><span>Cartão</span><span>Categoria</span><span style="text-align:right">Valor</span><span></span>
     </div>
     <div class="lancs" id="lista-extrato"></div>
   </div>
@@ -1013,6 +1092,10 @@ details.filtros-box[open]>summary::after{content:'−'}
 
 </main>
 
+<!-- Lançar rápido de qualquer tela -->
+<button class="fab" id="fab" aria-label="Lançar rápido" title="Lançar rápido">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
 <nav class="tabbar" aria-label="Seções">
   <button class="tab active" data-pagina="resumo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h4v8H3zM10 3h4v18h-4zM17 9h4v12h-4z"/></svg>Resumo</button>
   <button class="tab" data-pagina="lancar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Lançar</button>
@@ -1489,6 +1572,7 @@ function mudarPagina(id){
     b.classList.toggle('active',ativo);
     if(ativo)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
   });
+  const fab=$('fab');if(fab)fab.classList.toggle('oculto',id==='lancar'); // na própria aba Lançar não precisa
   window.scrollTo(0,0);
   render();
 }
@@ -1636,7 +1720,7 @@ function renderResumo(){
     const ant=FB.porCat[k]||0;
     const d=varTxt(v,ant,true);
     return [k,v,false,d.txt?`${d.txt}`:'',d.cls];
-  }),'Nenhum gasto neste mês.',{campo:'cat'});
+  }),'Nenhum gasto neste mês.',{campo:'cat',icone:iconeCategoria});
   // categoria que mais subiu em reais
   let maiorAlta=null;
   cats.forEach(([k,v])=>{
@@ -1682,6 +1766,23 @@ function abrirExtratoFiltrado(f){
    posição no ranking do mês. Da 8ª em diante, e "Sem cartão", vão de cinza. */
 const CORES_CAT=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
 const COR_OUTROS='#6b6b6b';
+
+/* Ícone por categoria (pelo nome — vale para categorias novas também).
+   Ordem importa: "Casa e Móveis" antes de "Contas da casa". */
+const ICONES_CAT=[
+  [/movei|decor|mobil/,'🛋️'],[/supermerc|mercado|feira|hortifruti/,'🛒'],[/saude|farmac|remed|medic/,'💊'],
+  [/aplicativo|^99|uber|taxi|transporte/,'🚕'],[/veicul|carro|combust|moto/,'🚗'],
+  [/lanche|aliment|restaur|comida|delivery/,'🍔'],[/roupa|vestu|moda|calcad/,'👕'],[/eletron|tecnolog|informat/,'💻'],
+  [/contas da casa|moradia|aluguel|casa/,'🏠'],[/assinatura|streaming/,'📺'],[/compra/,'🛍️'],
+  [/educa|curso|escola|livro|faculdade/,'📚'],[/emprest|financ|divida|juro/,'🏦'],[/viage|passage|turismo|hotel/,'✈️'],
+  [/pet|animal|veterin/,'🐾'],[/lazer|diversao|cinema|show/,'🎉'],[/presente/,'🎁'],[/investi|poupanca/,'📈'],
+  [/beleza|cabel|estetic/,'💇'],[/imposto|taxa|tribut/,'🧾']
+];
+function iconeCategoria(nome){
+  const n=normTxt(nome);
+  for(const [re,ic] of ICONES_CAT)if(re.test(n))return ic;
+  return '•';
+}
 
 /* Valor compacto para eixo: 0 · 500 · 1 mil · 2,5 mil */
 const fmtEixo=v=>v>=1000?(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':String(Math.round(v));
@@ -1930,7 +2031,9 @@ function renderPagar(A){
 function linhaPagamento(g,jaPago){
   const total=somaValores(g.itens);
   const ids=g.itens.map(i=>i.id).join(',');
-  return `<div class="settings-item">
+  const ic=g.tipo==='cartao'?'💳':iconeCategoria(g.itens[0].categoria);
+  return `<div class="settings-item com-ico">
+    <div class="lanc-ico" aria-hidden="true">${ic}</div>
     <div class="settings-item-info">
       <div class="settings-item-name">${esc(g.rotulo)}
         ${jaPago?'<span class="chip st-pago">✓ pago</span>':'<span class="chip st-pendente">pendente</span>'}</div>
@@ -1972,12 +2075,13 @@ function renderOrcamento(A){
 /* ── Maiores gastos do mês ── */
 function renderTop(A){
   const top=[...A.itens].sort((a,z)=>z.valor-a.valor).slice(0,5);
-  setHtml($('lista-top'),top.length?top.map(l=>`<div class="settings-item">
+  setHtml($('lista-top'),top.length?top.map(l=>`<div class="settings-item com-ico">
+      <div class="lanc-ico" aria-hidden="true">${iconeCategoria(l.categoria)}</div>
       <div class="settings-item-info">
         <div class="settings-item-name">${esc(l.desc)}${l.pago?' <span class="chip st-pago">✓ pago</span>':''}</div>
         <div class="settings-item-sub">${esc(l.responsavel)} · ${esc(l.cartao)} · ${esc(l.categoria)}${l.parcelas>1?` · parcela ${pad2(l.parcelaAtual)}/${pad2(l.parcelas)}`:''}</div>
       </div>
-      <div class="settings-item-actions" style="font-family:var(--serif);font-size:1.05rem;font-weight:700">${fmt(l.valor)}</div>
+      <div class="settings-item-actions valor-forte" style="font-size:1rem">${fmt(l.valor)}</div>
     </div>`).join(''):'<div class="settings-empty">Nenhum lançamento neste mês.</div>');
 }
 
@@ -2003,13 +2107,13 @@ function renderFuturo(chave,quem=null){
     : '';
 }
 /* {campo:'cat'} torna cada linha um botão que abre o extrato filtrado */
-function chart(elId,pares,vazio,{campo=null}={}){
+function chart(elId,pares,vazio,{campo=null,icone=null}={}){
   const el=$(elId);
   if(!pares.length){setHtml(el,`<div class="empty-state"><span class="icon">◦</span><p>${esc(vazio)}</p></div>`);return;}
   const maior=Math.max(...pares.map(p=>p[1]))||1;
   const temDestaque=pares.some(p=>p[2]);
   setHtml(el,pares.map(([k,v,d,sub,cls])=>`<div class="chart-row${d?' destaque':''}${temDestaque?' com-destaque':''}${campo?' clicavel':''}"${campo?` data-act="ver-extrato" data-${campo}="${esc(k)}" tabindex="0" role="button" aria-label="Ver ${esc(k)} no extrato: ${esc(fmt(v))}"`:''}>
-      <span class="chart-label">${esc(k)}</span>
+      <span class="chart-label">${icone?`<span class="ico-inline" aria-hidden="true">${icone(k)}</span>`:''}${esc(k)}</span>
       <span class="chart-val">${fmt(v)}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,v/maior*100).toFixed(1)}%"></div></div>
       ${sub?`<span class="chart-sub ${esc(cls||'')}">${esc(sub)}</span>`:''}
@@ -2433,7 +2537,7 @@ function renderPreviaFrase(){
   partes.push(chip('O quê',r.desc||'?',r.desc?'':'falta'));
   partes.push(chip('Valor',r.valor>0?(r.tipo==='parcela'?`${r.parcelas}× ${fmt(r.valor)}`:fmt(r.valor)):'?',r.valor>0?'':'falta'));
   if(r.parcelas>1&&r.tipo!=='parcela'&&r.valor>0)partes.push(chip('Parcelas',`${r.parcelas}× de ${fmt(dividirValor(r.valor,r.parcelas)[0])}`));
-  partes.push(chip('Categoria',r.categoria||'escolha',r.categoria?(r.catOrigem==='frase'?'':'auto'):'falta'));
+  partes.push(chip('Categoria',r.categoria?`${iconeCategoria(r.categoria)} ${r.categoria}`:'escolha',r.categoria?(r.catOrigem==='frase'?'':'auto'):'falta'));
   partes.push(chip('Pagamento',r.cartao,r.cartaoOrigem?'auto':''));
   if(r.divisao)partes.push(chip('Dividido',r.divisao.map(primeiroNome).join(' + ')));
   else if(r.responsavel)partes.push(chip('De',primeiroNome(r.responsavel),r.respOrigem?'auto':''));
@@ -2508,20 +2612,21 @@ function linhaLanc(l,{conferencia=false,pend=null}={}){
     : `<button class="btn btn-ghost btn-sm" data-act="editar" data-id="${esc(l.id)}">Editar</button>
        <button class="btn btn-ghost btn-sm" data-act="excluir" data-id="${esc(l.id)}" style="color:var(--red)">Excluir</button>
        ${l.parcelas>1?`<button class="btn btn-ghost btn-sm" data-act="excluir-grupo" data-grupo="${esc(l.grupoId)}" style="color:var(--red)">Todas</button>`:''}`;
-  /* Ordem do DOM = ordem das colunas do desktop. O chip do mês é sempre
-     emitido; esconder por CSS evita desalinhar a linha do cabeçalho. */
-  return `<div class="lanc" data-id="${esc(l.id)}">
-    <div class="lanc-desc">${esc(l.desc)}${ehRecorrente(l)?' <span class="chip rec">fixa</span>':''}${
-      conferencia?'':` <button class="chip ${l.pago?'st-pago':'st-pendente'}" data-act="alternar-pago" data-id="${esc(l.id)}" title="${l.pago?'Marcar como pendente':'Marcar como pago'}">${l.pago?'✓ pago':'pendente'}</button>`
-    }${pend&&pend.has(l.id)?' <span class="chip pend">não enviado</span>':''}</div>
+  /* Ordem do DOM = ordem das colunas do desktop (ícone, descrição, mês,
+     parcela, pessoa, cartão, categoria, valor, ações). No celular os
+     detalhes viram uma linha de texto e as ações aparecem ao tocar ou
+     deslizar a linha para a esquerda. */
+  return `<div class="lanc${conferencia?' conf':''}" data-id="${esc(l.id)}">
+    <div class="lanc-ico" aria-hidden="true" title="${esc(l.categoria)}">${iconeCategoria(l.categoria)}</div>
+    <div class="lanc-desc">${esc(l.desc)}${ehRecorrente(l)?' <span class="tag rec">fixa</span>':''}${pend&&pend.has(l.id)?' <span class="tag pend">não enviado</span>':''}</div>
     <div class="lanc-meta">
       <span class="chip chip-mes" title="${esc(chaveExib(l.mesChave))}">${esc(chaveMedia(l.mesChave))}</span>
       ${chipParcela(l.parcelaAtual,l.parcelas)}
-      <span class="chip resp">${esc(l.responsavel)}</span>
+      <span class="chip resp">${esc(primeiroNome(l.responsavel))}</span>
       <span class="chip">${esc(l.cartao)}</span>
-      <span class="chip">${esc(l.categoria)}</span>
+      <span class="chip chip-cat">${esc(l.categoria)}</span>
     </div>
-    <div class="lanc-valor">${fmt(l.valor)}</div>
+    <div class="lanc-valor">${fmt(l.valor)}${conferencia?'':`<button class="st ${l.pago?'st-ok':'st-pend'}" data-act="alternar-pago" data-id="${esc(l.id)}" aria-label="${l.pago?'Pago — marcar como pendente':'Pendente — marcar como pago'}">${l.pago?'✓ pago':'pendente'}</button>`}</div>
     <div class="lanc-acoes">${acoes}</div>
   </div>`;
 }
@@ -2653,11 +2758,25 @@ function renderExtrato(){
   $('ext-total').textContent=fmt(dados.reduce((s,l)=>s+l.valor,0));
   $('ext-pendente').textContent=fmt(pendenteFiltrado);
   const lista=$('lista-extrato');
-  lista.classList.toggle('sem-mes',fm.value!=='Todos');
+  // o mês não se repete na linha quando a lista é de um mês só ou já tem cabeçalho por mês
+  lista.classList.toggle('sem-mes',fm.value!=='Todos'||['mes_desc','mes_asc'].includes($('f_ordem').value));
   const pend=idsPendentes();
   const rascunho=capturarRascunho();
+  /* Vários meses na lista, ordenada por data: um cabeçalho por mês com o
+     total e quantos itens (ordenada por valor ou nome, não faz sentido). */
+  const porMesOrdem=['mes_desc','mes_asc'].includes($('f_ordem').value)&&fm.value==='Todos';
+  const totMes={};if(porMesOrdem)dados.forEach(l=>{const t=totMes[l.mesChave]||(totMes[l.mesChave]={v:0,n:0});t.v+=l.valor;t.n++;});
+  let ultimoMes=null;
+  const linhas=dados.map(l=>{
+    let cab='';
+    if(porMesOrdem&&l.mesChave!==ultimoMes){
+      ultimoMes=l.mesChave;const t=totMes[l.mesChave];
+      cab=`<div class="grupo-mes"><span>${esc(chaveExib(l.mesChave))}</span><span>${t.n} ${t.n===1?'item':'itens'} · <b>${fmt(t.v)}</b></span></div>`;
+    }
+    return cab+(editandoId===l.id?linhaEdicao(l):linhaLanc(l,{pend}));
+  });
   const mudou=setHtml(lista,dados.length
-    ? dados.map(l=>editandoId===l.id?linhaEdicao(l):linhaLanc(l,{pend})).join('')
+    ? linhas.join('')
     : '<div class="empty-state"><span class="icon">◦</span><p>Nenhum lançamento encontrado.</p></div>');
   if(mudou)restaurarRascunho(rascunho);
 }
@@ -2993,7 +3112,8 @@ function renderAjustes(){
   // Categorias levam o limite mensal usado pelas barras de orçamento do painel.
   setHtml($('lista-categorias'),S.categorias.length?S.categorias.map(c=>{
     const lim=limiteDe(c.nome);
-    return `<div class="settings-item">
+    return `<div class="settings-item com-ico">
+      <div class="lanc-ico" aria-hidden="true">${iconeCategoria(c.nome)}</div>
       <div class="settings-item-info">
         <div class="settings-item-name">${esc(c.nome)}</div>
         <div class="settings-item-sub">${contarUso('categoria',c.nome)} lançamento(s) · ${lim?'limite '+fmt(lim)+'/mês':'sem limite'}</div>
@@ -3361,6 +3481,29 @@ const ACOES={
   'limpar-filtro':el=>limparFiltros([el.dataset.f]),
   'limpar-filtros':()=>limparFiltros(['f_mes','f_resp','f_cartao','f_cat','f_situacao','f_busca'])
 };
+/* Extrato no celular: tocar na linha mostra/esconde as ações; deslizar
+   para a esquerda abre, para a direita fecha. Só uma aberta por vez.
+   No computador as ações já ficam na própria linha da tabela. */
+const ehComputador=()=>window.matchMedia('(min-width:900px)').matches;
+function abrirLinha(lanc,abrir){
+  document.querySelectorAll('#lista-extrato .lanc.aberto').forEach(x=>{if(x!==lanc)x.classList.remove('aberto');});
+  lanc.classList.toggle('aberto',abrir);
+}
+document.addEventListener('click',e=>{
+  const lanc=e.target.closest&&e.target.closest('#lista-extrato .lanc:not(.editando)');
+  if(!lanc||ehComputador()||e.target.closest('button,a,input,select,textarea,details'))return;
+  abrirLinha(lanc,!lanc.classList.contains('aberto'));
+});
+(function deslizar(){
+  const lista=$('lista-extrato');if(!lista)return;
+  let t=null;
+  lista.addEventListener('touchstart',e=>{const l=e.target.closest('.lanc:not(.editando)');t=l?{l,x:e.touches[0].clientX,y:e.touches[0].clientY}:null;},{passive:true});
+  lista.addEventListener('touchend',e=>{
+    if(!t)return;const dx=e.changedTouches[0].clientX-t.x, dy=e.changedTouches[0].clientY-t.y;
+    if(Math.abs(dx)>50&&Math.abs(dy)<35)abrirLinha(t.l,dx<0);
+    t=null;
+  },{passive:true});
+})();
 function limparFiltros(ids){
   ids.forEach(id=>{
     if(id==='f_busca')$('f_busca').value='';
@@ -3420,6 +3563,7 @@ on('frase','input',renderPreviaFrase);
 on('frase','keydown',e=>{if(e.key==='Enter'){e.preventDefault();adicionarFrase();}});
 on('btn-frase-add','click',adicionarFrase);
 on('btn-frase-ajustar','click',ajustarFrase);
+on('fab','click',()=>{mudarPagina('lancar');setTimeout(()=>{const f=$('frase');if(f)f.focus();},60);});
 on('btn-salvar-tudo','click',salvarTudo);
 on('btn-limpar-conferencia','click',()=>{
   if(!itensPreparo.length||!confirm('Descartar todos os itens da conferência?'))return;
