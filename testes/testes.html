@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Testes — Controle Financeiro</title>
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;background:#111;color:#ddd;margin:0;padding:20px}
+  h1{font-size:18px;margin:0 0 4px}
+  #resumo{font-weight:600;margin:0 0 14px}
+  .ok{color:#4ade80}.falha{color:#f87171}
+  li{margin:2px 0}
+  iframe{width:390px;height:10px;border:0;opacity:0;position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<!-- Abre o app de verdade num quadro escondido e confere os cálculos que
+     não podem quebrar: valores, parcelas, divisão, fatura, acerto e a
+     leitura de frases do Lançar rápido. Rodado a cada publicação no GitHub
+     (Actions) e também à mão: abra esta página no navegador. -->
+<h1>Testes do Controle Financeiro</h1>
+<div id="resumo">Rodando…</div>
+<ul id="lista"></ul>
+<iframe id="app" src="../index.html"></iframe>
+<script>
+const lista=document.getElementById('lista'), resumo=document.getElementById('resumo');
+let ok=0, falhas=0;
+function confere(nome, obtido, esperado){
+  const igual=JSON.stringify(obtido)===JSON.stringify(esperado);
+  const li=document.createElement('li');
+  li.className=igual?'ok':'falha';
+  li.textContent=(igual?'✓ ':'✗ ')+nome+(igual?'':`  — obtido ${JSON.stringify(obtido)}, esperado ${JSON.stringify(esperado)}`);
+  lista.appendChild(li);
+  igual?ok++:falhas++;
+}
+document.getElementById('app').addEventListener('load',()=>{
+  const w=document.getElementById('app').contentWindow;
+  // eval no próprio app: enxerga as variáveis dele (S, pessoaPrincipal…)
+  const no=codigo=>w.eval(codigo);
+  try{
+    no(`
+      S.pessoas=[{id:'1',nome:'Fernando Lopes'},{id:'2',nome:'Cindhy Medeiros'},{id:'3',nome:'Cintia Muniz'}];
+      S.categorias=['Supermercados','Saúde','Contas da casa','Lanches','Eletrônicos','Aplicativo 99'].map((n,i)=>({id:'c'+i,nome:n}));
+      S.cartoes=[{id:'k1',nome:'Nubank',fechamento:'3',vencimento:'10'},{id:'k2',nome:'Hipercard',fechamento:'25',vencimento:'5'},{id:'k3',nome:'Mercado Pago'}];
+      S.lancamentos=[{id:'h1',desc:'Panvel',mesChave:'2026-10',valor:30,responsavel:'Fernando Lopes',cartao:'Mercado Pago',categoria:'Saúde',parcelas:1,parcelaAtual:1,grupoId:'h1',pago:true}];
+      S.receitas={}; S.acertos=[]; pessoaPrincipal='Fernando Lopes'; SESSAO=null; outbox=[];
+    `);
+
+    // valores digitados
+    confere('parseValor "1.234,56"', no('parseValor("1.234,56")'), 1234.56);
+    confere('parseValor "89,9"', no('parseValor("89,9")'), 89.9);
+    confere('parseValor "R$ 12"', no('parseValor("R$ 12")'), 12);
+    confere('parseValor "23.50"', no('parseValor("23.50")'), 23.5);
+    confere('parseValor inválido', no('isNaN(parseValor("abc"))'), true);
+
+    // divisão em centavos, sem sobra
+    confere('100 em 3', no('dividirValor(100,3)'), [33.34,33.33,33.33]);
+    confere('2899 em 10 soma certo', no('Math.round(dividirValor(2899,10).reduce((s,v)=>s+v,0)*100)/100'), 2899);
+    confere('1103,88 em 2', no('dividirValor(1103.88,2)'), [551.94,551.94]);
+
+    // meses
+    confere('chaveDesloc dez→jan', no('chaveDesloc("2026-12",1)'), '2027-01');
+    confere('chaveDesloc 15 meses', no('chaveDesloc("2026-11",15)'), '2028-02');
+
+    // fatura pelo fechamento
+    const fat=(c,d)=>no(`(()=>{const f=faturaDoCartao('${c}',new Date('${d}T12:00'));return f?f.mes+'/'+f.ano:null})()`);
+    confere('Nubank compra 02/11 → nov', fat('Nubank','2026-11-02'), '11/2026');
+    confere('Nubank compra 05/11 → dez', fat('Nubank','2026-11-05'), '12/2026');
+    confere('Hipercard compra 20/11 → dez', fat('Hipercard','2026-11-20'), '12/2026');
+    confere('Hipercard compra 26/11 → jan', fat('Hipercard','2026-11-26'), '1/2027');
+    confere('cartão sem fechamento', fat('Mercado Pago','2026-11-20'), null);
+
+    // Lançar rápido
+    const frase=t=>no(`(()=>{const r=interpretarFrase(${JSON.stringify(t)});return [r.desc,r.valor,r.parcelas,r.tipo,r.categoria,r.cartao,r.divisao?r.divisao.join('+'):r.responsavel,r.fixa]})()`);
+    confere('frase simples', frase('mercado 89,90 nubank').slice(0,6), ['Mercado',89.9,1,'total','Supermercados','Nubank']);
+    confere('frase parcelada', frase('tv 2899 em 10x hipercard').slice(1,6), [2899,10,'total','Eletrônicos','Hipercard']);
+    confere('frase valor da parcela', frase('tv 10x de 289,90 hipercard').slice(1,4), [289.9,10,'parcela']);
+    confere('frase dividida', frase('pizza 120 dividido com cindhy')[6], 'Fernando Lopes+Cindhy Medeiros');
+    confere('frase dividida entre', frase('sushi 87 dividido entre cindhy e cintia')[6], 'Cindhy Medeiros+Cintia Muniz');
+    confere('frase pra alguém', frase('farmácia 32 pra cintia')[6], 'Cintia Muniz');
+    confere('frase fixa', frase('netflix 44,90 todo mês')[7], true);
+    confere('frase usa histórico', frase('panvel 45').slice(4,6), ['Saúde','Mercado Pago']);
+    confere('frase número na descrição', frase('uber 99 23,50').slice(0,2), ['Uber 99',23.5]);
+    confere('frase sem categoria pede', no('interpretarFrase("presente 150").faltando'), ['categoria']);
+
+    // painel: agregado e acerto
+    no(`
+      const h='2026-11';
+      const L=(id,d,v,p,c,cat,pago)=>({id,desc:d,mesChave:h,valor:v,responsavel:p,cartao:c,categoria:cat,parcelas:1,parcelaAtual:1,grupoId:id,pago:!!pago});
+      S.lancamentos=[L('a','Aluguel (Div.)',551.94,'Fernando Lopes','Sem cartão','Contas da casa'),L('b','Aluguel (Div.)',551.94,'Cindhy Medeiros','Sem cartão','Contas da casa'),
+        L('c','Pizza (Div.)',60,'Cindhy Medeiros','Nubank','Lanches',true),L('d','Mercado',300,'Fernando Lopes','Nubank','Supermercados',true)];
+      S.receitas={'2026-11':6400};
+    `);
+    confere('agregado total', no('Math.round(agregado("2026-11").total*100)/100'), 1463.88);
+    confere('agregado meu', no('Math.round(agregado("2026-11").meu*100)/100'), 851.94);
+    confere('saldo = receita − meus gastos', no('Math.round(agregado("2026-11").saldo*100)/100'), 5548.06);
+    confere('agregado só da Cindhy', no('Math.round(agregado("2026-11","Cindhy Medeiros").total*100)/100'), 611.94);
+    confere('acerto da Cindhy', no('acertosDoMes("2026-11").map(a=>[a.pessoa,a.total])'), [['Cindhy Medeiros',611.94]]);
+
+    // fila offline: criar e apagar antes de enviar não manda nada
+    no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);
+    confere('fila: apagado antes de enviar some', no('outbox.map(o=>o.acao+":"+(o.dados.itens||o.dados.ids).map(i=>i.id||i).join(","))'), ['addLancamentos:z2']);
+    no(`outbox=[];try{localStorage.removeItem('cf_outbox');localStorage.removeItem('cf_cache')}catch(e){}`);
+  }catch(e){
+    falhas++;confere('erro ao rodar os testes: '+e.message, false, true);
+  }
+  resumo.className=falhas?'falha':'ok';
+  resumo.textContent=falhas?`TESTES-FALHARAM: ${falhas} de ${ok+falhas}`:`TESTES-OK: ${ok} de ${ok}`;
+  document.title=resumo.textContent;
+});
+</script>
+</body>
+</html>

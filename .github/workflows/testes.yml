@@ -1,0 +1,19 @@
+# Roda os testes do app (testes/testes.html) num Chrome sem tela a cada
+# publicação. Se algum cálculo quebrar, o GitHub marca o commit com ✗.
+name: Testes
+on: [push, pull_request]
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Servir o app
+        run: python3 -m http.server 8000 &
+      - name: Rodar os testes no Chrome
+        run: |
+          sleep 2
+          google-chrome --headless=new --disable-gpu --no-sandbox --virtual-time-budget=15000 \
+            --dump-dom http://localhost:8000/testes/testes.html > saida.html
+          grep -o 'TESTES-[A-Z]*: [^<]*' saida.html || true
+          grep -o '<li class="falha">[^<]*' saida.html || true
+          grep -q 'TESTES-OK' saida.html
