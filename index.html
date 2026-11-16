@@ -565,6 +565,13 @@ details.filtros-box[open]>summary::after{content:'−'}
 .projecao b.neg{color:var(--red)}
 .projecao small{font-size:.66rem;color:var(--text3)}
 
+/* ── Janela de pagamento ── */
+.pag-ou{display:flex;align-items:center;gap:10px;margin:16px 0 10px;font-size:.76rem;color:var(--text3)}
+.pag-ou::before,.pag-ou::after{content:'';flex:1;height:1px;background:var(--border)}
+#pag-erro:empty{display:none}
+#pag-erro{margin-top:8px}
+#pag-dica{margin-top:8px}
+
 /* ── Ajustes: cartões e ícones ── */
 .ico-btn{cursor:pointer;padding:0;color:inherit}
 .ico-btn:hover{border-color:var(--gold)}
@@ -1280,6 +1287,22 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
   <button class="tab" data-pagina="extrato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>Extrato</button>
   <button class="tab" data-pagina="ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6A7 7 0 0 0 19 12z"/></svg>Ajustes</button>
 </nav>
+
+<div id="modal-pag" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pag-titulo">
+  <div class="modal-box">
+    <div class="modal-title" id="pag-titulo">Pagamento</div>
+    <div class="modal-sub" id="pag-sub">—</div>
+    <button class="btn btn-success btn-full" id="pag-total">Total</button>
+    <div class="pag-ou"><span>ou só uma parte</span></div>
+    <div class="rapido-linha">
+      <input type="text" id="pag-valor" class="inp" placeholder="0,00" inputmode="decimal" autocomplete="off" data-dinheiro aria-label="Valor pago agora">
+      <button class="btn btn-primary" id="pag-parcial">Parcial</button>
+    </div>
+    <div class="auth-err" id="pag-erro" role="alert"></div>
+    <div class="field-hint" id="pag-dica"></div>
+    <button class="btn btn-ghost btn-full" id="pag-cancelar" style="margin-top:14px">Cancelar</button>
+  </div>
+</div>
 
 <div id="modal-icone" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-icone-titulo">
   <div class="modal-box">
@@ -2123,65 +2146,135 @@ function sparkline(elId,pares){
    Você paga os cartões e as contas; cada pessoa te deve a soma dos
    lançamentos dela no mês (inclusive a parte das contas divididas).
    "Recebido" fica guardado na planilha (aba Acertos), mês a mês. */
+/* Saldo que passa de um mês para o outro, por pessoa:
+     devido(mês) = gastos dela no mês + saldo do mês anterior
+     saldo(mês)  = devido − o que ela te pagou naquele mês
+   Sem pagamento registrado, o devido inteiro passa para o mês seguinte.
+   Saldo negativo = pagou a mais, e vira crédito no mês seguinte. */
+const r2=v=>Math.round((Number(v)||0)*100)/100;
+function contaPessoa(pessoa,chave){
+  const doMes={};S.lancamentos.forEach(l=>{if(l.responsavel===pessoa)(doMes[l.mesChave]=doMes[l.mesChave]||[]).push(l);});
+  const recs={};S.acertos.forEach(a=>{if(a.pessoa===pessoa)recs[a.mes]=a;});
+  const meses=[...Object.keys(doMes),...Object.keys(recs)].filter(k=>k&&k<=chave).sort();
+  if(!meses.length)return null;
+  let k=meses[0],saldo=0,guarda=0;
+  while(k<chave&&guarda++<240){
+    saldo=r2(saldo+somaValores(doMes[k]||[])-(recs[k]?recs[k].valor:0));
+    k=chaveDesloc(k,1);
+  }
+  const itens=doMes[chave]||[], gasto=r2(somaValores(itens)), anterior=saldo, devido=r2(gasto+anterior);
+  const reg=recs[chave]||null, recebido=reg?r2(reg.valor):0, falta=r2(devido-recebido);
+  return{pessoa,itens,gasto,anterior,devido,total:devido,recebido,falta,reg};
+}
 function acertosDoMes(chave){
-  const porPessoa={};
-  S.lancamentos.forEach(l=>{
-    if(l.mesChave!==chave||!l.responsavel||l.responsavel===pessoaPrincipal)return;
-    (porPessoa[l.responsavel]=porPessoa[l.responsavel]||[]).push(l);
-  });
-  return Object.entries(porPessoa).map(([pessoa,itens])=>{
-    const total=Math.round(somaValores(itens)*100)/100;
-    const reg=S.acertos.find(a=>a.mes===chave&&a.pessoa===pessoa);
-    return{pessoa,itens,total,recebido:reg||null};
-  }).sort((a,b)=>b.total-a.total);
+  const pessoas=new Set();
+  S.lancamentos.forEach(l=>{if(l.responsavel&&l.responsavel!==pessoaPrincipal&&l.mesChave<=chave)pessoas.add(l.responsavel);});
+  S.acertos.forEach(a=>{if(a.pessoa!==pessoaPrincipal&&a.mes<=chave)pessoas.add(a.pessoa);});
+  return [...pessoas].map(p=>contaPessoa(p,chave))
+    .filter(c=>c&&(c.gasto>0||Math.abs(c.anterior)>=0.01||c.recebido>0))
+    .sort((a,b)=>b.devido-a.devido);
 }
 function renderAcerto(chave){
   const card=$('card-acerto');if(!card)return;
   if(!pessoaPrincipal){card.style.display='none';return;}
   card.style.display='';
   const lista=acertosDoMes(chave);
-  const aReceber=lista.filter(a=>!a.recebido).reduce((s,a)=>s+a.total,0);
-  const recebido=lista.filter(a=>a.recebido).reduce((s,a)=>s+a.recebido.valor,0);
+  const aReceber=lista.reduce((s,a)=>s+Math.max(0,a.falta),0);
+  const recebido=lista.reduce((s,a)=>s+a.recebido,0);
   setHtml($('acerto-resumo'),lista.length
-    ?`<span>A receber <b>${fmt(aReceber)}</b></span><span>Já recebido <b class="ok">${fmt(recebido)}</b></span>`:'');
+    ?`<span>A receber <b>${fmt(aReceber)}</b></span><span>Recebido no mês <b class="ok">${fmt(recebido)}</b></span>`:'');
   setHtml($('lista-acerto'),lista.length?lista.map(a=>{
-    const dif=a.recebido?Math.round((a.total-a.recebido.valor)*100)/100:0;
-    const status=a.recebido
-      ?`<span class="chip st-pago">✓ recebido ${a.recebido.recebidoEm?esc(a.recebido.recebidoEm.split('-').reverse().slice(0,2).join('/')):''}</span>`+
-        (Math.abs(dif)>=0.01?` <span class="chip pend">${dif>0?'faltam':'sobrou'} ${fmt(Math.abs(dif))}</span>`:'')
-      :'<span class="chip st-pendente">a receber</span>';
+    const quitado=a.falta<=0.005;
+    const data=a.reg&&a.reg.recebidoEm?' '+esc(a.reg.recebidoEm.split('-').reverse().slice(0,2).join('/')):'';
+    const status=quitado
+      ?`<span class="chip st-pago">✓ ${a.falta<-0.005?'pagou a mais':'quitado'}${data}</span>`
+      :(a.recebido>0?`<span class="chip pend">parcial · falta ${fmt(a.falta)}</span>`:'<span class="chip st-pendente">a receber</span>');
+    const partes=[`${a.itens.length} lançamento(s) ${fmt(a.gasto)}`];
+    if(Math.abs(a.anterior)>=0.01)partes.push(a.anterior>0?`+ saldo anterior ${fmt(a.anterior)}`:`− crédito ${fmt(-a.anterior)}`);
+    if(a.recebido>0)partes.push(`recebido ${fmt(a.recebido)}`);
     return `<div class="settings-item com-ico acerto-item">
       <div class="lanc-ico avatar" aria-hidden="true">${esc(primeiroNome(a.pessoa).charAt(0).toUpperCase())}</div>
       <div class="settings-item-info">
         <div class="settings-item-name">${esc(primeiroNome(a.pessoa))} ${status}</div>
-        <div class="settings-item-sub">${a.itens.length} lançamento(s) · <b class="valor-forte" style="color:var(--text)">${fmt(a.total)}</b></div>
+        <div class="settings-item-sub">${partes.join(' · ')} · <b class="valor-forte" style="color:var(--text)">${quitado?'devido '+fmt(a.devido):'falta '+fmt(a.falta)}</b></div>
       </div>
       <div class="settings-item-actions">
         <button class="btn btn-ghost btn-sm" data-act="ver-extrato" data-resp="${esc(a.pessoa)}">Itens</button>
-        <button class="btn btn-ghost btn-sm" data-act="enviar-acerto" data-pessoa="${esc(a.pessoa)}">Enviar</button>
-        <button class="btn ${a.recebido?'btn-ghost':'btn-success'} btn-sm" data-act="marcar-acerto" data-pessoa="${esc(a.pessoa)}" data-recebido="${a.recebido?'0':'1'}">${a.recebido?'Desfazer':'Recebido'}</button>
+        ${quitado?'':`<button class="btn btn-ghost btn-sm" data-act="enviar-acerto" data-pessoa="${esc(a.pessoa)}">Enviar</button>`}
+        ${a.recebido>0?`<button class="btn btn-ghost btn-sm" data-act="desfazer-acerto" data-pessoa="${esc(a.pessoa)}">Desfazer</button>`:''}
+        ${quitado?'':`<button class="btn btn-success btn-sm" data-act="receber-acerto" data-pessoa="${esc(a.pessoa)}">Receber</button>`}
       </div></div>`;
   }).join(''):'<div class="settings-empty">Ninguém te deve nada neste mês.</div>');
 }
-function marcarAcertoDe(pessoa,recebido){
-  const chave=mesResumo(), a=acertosDoMes(chave).find(x=>x.pessoa===pessoa);if(!a)return;
-  if(!recebido&&!confirm(`Desfazer o recebimento de ${primeiroNome(pessoa)} em ${chaveExib(chave)}?`))return;
-  mutar(()=>{
-    S.acertos=S.acertos.filter(x=>!(x.mes===chave&&x.pessoa===pessoa));
-    if(recebido)S.acertos.push({mes:chave,pessoa,valor:a.total,recebidoEm:dataHoje()});
-  },'marcarAcerto',{mes:chave+'-01',pessoa,valor:a.total,recebido:!!recebido});
-  toast(recebido?`${primeiroNome(pessoa)} pagou ${fmt(a.total)} ✓`:'Recebimento desfeito',recebido?'success':'info');
+/* Registra quanto a pessoa pagou (tudo ou parte). Pagamentos no mesmo mês
+   se somam; o que faltar passa sozinho para o mês seguinte. */
+function receberAcerto(pessoa){
+  const chave=mesResumo(), a=contaPessoa(pessoa,chave);if(!a||a.falta<=0)return;
+  abrirPagamento({
+    titulo:`${primeiroNome(pessoa)} pagou`,
+    sub:chaveExib(chave),
+    total:a.falta,
+    rotuloTotal:'Tudo',
+    dica:Math.abs(a.anterior)>=0.01||a.recebido>0
+      ?`Devido ${fmt(a.devido)}${a.anterior>0.005?` (inclui ${fmt(a.anterior)} do mês anterior)`:''}${a.recebido>0?` · já recebeu ${fmt(a.recebido)}`:''}. O que faltar passa para o mês seguinte.`
+      :'O que faltar passa para o mês seguinte.',
+    aoConfirmar(valor){
+      const novo=r2(a.recebido+valor);
+      mutar(()=>{
+        S.acertos=S.acertos.filter(x=>!(x.mes===chave&&x.pessoa===pessoa));
+        S.acertos.push({mes:chave,pessoa,valor:novo,recebidoEm:dataHoje()});
+      },'marcarAcerto',{mes:chave+'-01',pessoa,valor:novo,recebido:true});
+      const falta=r2(a.devido-novo);
+      toast(falta>0.005?`${primeiroNome(pessoa)} pagou ${fmt(valor)} — faltam ${fmt(falta)}, que passam para o mês seguinte`
+        :`${primeiroNome(pessoa)} quitou ${chaveExib(chave)} ✓`,'success');
+    }
+  });
+}
+function desfazerAcerto(pessoa){
+  const chave=mesResumo();
+  if(!confirm(`Apagar os pagamentos de ${primeiroNome(pessoa)} registrados em ${chaveExib(chave)}?`))return;
+  mutar(()=>{S.acertos=S.acertos.filter(x=>!(x.mes===chave&&x.pessoa===pessoa));},
+    'marcarAcerto',{mes:chave+'-01',pessoa,valor:0,recebido:false});
+  toast('Pagamentos do mês desfeitos','info');
 }
 /* Abre o WhatsApp com o resumo pronto (você escolhe o contato). */
 function enviarAcerto(pessoa){
-  const chave=mesResumo(), a=acertosDoMes(chave).find(x=>x.pessoa===pessoa);if(!a)return;
+  const chave=mesResumo(), a=contaPessoa(pessoa,chave);if(!a)return;
   const linhas=a.itens.slice().sort((x,y)=>y.valor-x.valor);
   const mostra=linhas.slice(0,15).map(l=>`• ${semDiv(l.desc)}${l.parcelas>1?` ${pad2(l.parcelaAtual)}/${pad2(l.parcelas)}`:''}: ${fmt(l.valor)}`);
   if(linhas.length>15)mostra.push(`• e mais ${linhas.length-15} item(ns)`);
+  if(a.anterior>0.005)mostra.push(`• Saldo de meses anteriores: ${fmt(a.anterior)}`);
+  if(a.anterior<-0.005)mostra.push(`• Crédito de meses anteriores: −${fmt(-a.anterior)}`);
+  if(a.recebido>0)mostra.push(`• Já recebido: −${fmt(a.recebido)}`);
   const p=S.pessoas.find(x=>x.nome===pessoa);
   const link=p&&p.token?`${location.origin+location.pathname}?token=${encodeURIComponent(p.token)}`:'';
-  const msg=`Oi, ${primeiroNome(pessoa)}! Acerto de ${chaveExib(chave)}: *${fmt(a.total)}*\n\n${mostra.join('\n')}`+(link?`\n\nDetalhes: ${link}`:'');
+  const msg=`Oi, ${primeiroNome(pessoa)}! Acerto de ${chaveExib(chave)}: *${fmt(a.falta)}*\n\n${mostra.join('\n')}`+(link?`\n\nDetalhes: ${link}`:'');
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank','noopener');
+}
+
+/* ── Janela de pagamento: tudo ou parte ── */
+let pagamentoAtual=null;
+function abrirPagamento(o){
+  pagamentoAtual=o;
+  $('pag-titulo').textContent=o.titulo;
+  $('pag-sub').textContent=o.sub||'';
+  $('pag-total').textContent=`${o.rotuloTotal||'Total'} — ${fmt(o.total)}`;
+  $('pag-valor').value='';
+  $('pag-dica').textContent=o.dica||'';
+  $('pag-erro').textContent='';
+  $('modal-pag').classList.add('open');
+}
+const fecharPagamento=()=>{$('modal-pag').classList.remove('open');pagamentoAtual=null;};
+function confirmarPagamento(parcial){
+  const o=pagamentoAtual;if(!o)return;
+  let v=o.total;
+  if(parcial){
+    v=parseValor($('pag-valor').value);
+    if(!(v>0)){$('pag-erro').textContent='Digite quanto foi pago.';return;}
+    if(v>=o.total-0.005)v=o.total; // digitou o total: é pagamento total
+  }
+  fecharPagamento();
+  o.aoConfirmar(r2(v),v>=o.total-0.005);
 }
 
 /* Valor que "conta" do anterior até o novo (meio segundo). */
@@ -3264,16 +3357,47 @@ function alternarPago(id){
   marcarPagamento([id],!l.pago);
   toast(l.pago?`"${l.desc}" pago`:`"${l.desc}" voltou a pendente`,l.pago?'success':'info');
 }
+/* "Pagar" no A pagar: total ou parcial. No parcial, os lançamentos ficam
+   como pagos e o restante vira um lançamento no mês seguinte — no mesmo
+   cartão, se for fatura (aparece na próxima fatura; edite para somar os
+   juros). "Desfazer" volta tudo, inclusive esse restante. */
+const grupoSaldo=ids=>'SALDO-'+ids[0];
 function pagarGrupo(idsTxt,rotulo,pago,tipo){
   const ids=String(idsTxt||'').split(',').filter(Boolean);
   if(!ids.length)return;
-  const total=ids.reduce((s,id)=>{const l=S.lancamentos.find(x=>x.id===id);return s+(l?l.valor:0);},0);
-  // fatura com vários lançamentos pede confirmação; conta (mesmo dividida) é uma conta só
-  if(pago&&tipo==='cartao'&&ids.length>1&&!confirm(`Marcar como pago: ${rotulo}\n${ids.length} lançamento(s) · ${fmt(total)}?`))return;
-  if(!pago&&!confirm(`Desfazer o pagamento de ${rotulo}?`))return;
-  const n=marcarPagamento(ids,pago);
-  const nome=tipo==='conta'?`"${rotulo}"`:`${n} lançamento(s)`;
-  toast(pago?`${nome} pago — ${fmt(total)}`:`${nome} voltou a pendente`,pago?'success':'info');
+  const itens=ids.map(id=>S.lancamentos.find(x=>x.id===id)).filter(Boolean);
+  const total=r2(somaValores(itens));
+  if(!pago){
+    if(!confirm(`Desfazer o pagamento de ${rotulo}?`))return;
+    const n=marcarPagamento(ids,false);
+    const resto=S.lancamentos.filter(l=>l.grupoId===grupoSaldo(ids)&&!l.pago);
+    if(resto.length){
+      const rid=resto.map(l=>l.id);
+      mutar(()=>{S.lancamentos=S.lancamentos.filter(l=>!rid.includes(l.id));},'deleteLancamentos',{ids:rid});
+    }
+    toast(`${tipo==='conta'?`"${rotulo}"`:`${n} lançamento(s)`} voltou a pendente`,'info');
+    return;
+  }
+  abrirPagamento({
+    titulo:`Pagar ${rotulo}`,
+    sub:`${itens.length} lançamento(s) · ${chaveExib(itens[0].mesChave)}`,
+    total,
+    rotuloTotal:'Paguei tudo',
+    dica:'Pagou só uma parte? O restante vira um lançamento no mês seguinte'+(tipo==='cartao'?', na próxima fatura do mesmo cartão (edite para somar os juros).':'.'),
+    aoConfirmar(valor,ehTotal){
+      marcarPagamento(ids,true);
+      if(ehTotal){toast(`${tipo==='conta'?`"${rotulo}"`:rotulo} pago — ${fmt(total)}`,'success');return;}
+      const restante=r2(total-valor), mes=itens[0].mesChave, prox=chaveDesloc(mes,1);
+      const cartao=tipo==='cartao'?itens[0].cartao:'Sem cartão';
+      const catJuros=S.categorias.find(c=>/emprest|juro|financ|tarifa/.test(normTxt(c.nome)));
+      const item={id:uid(),desc:(tipo==='cartao'?`Saldo da fatura ${cartao}`:`Saldo de ${rotulo}`)+` (${chaveCurta(mes)})`,
+        mesChave:prox,valor:restante,responsavel:pessoaPrincipal||itens[0].responsavel,cartao,
+        categoria:tipo==='cartao'&&catJuros?catJuros.nome:itens[0].categoria,
+        parcelas:1,parcelaAtual:1,grupoId:grupoSaldo(ids),pago:false,pagoEm:''};
+      mutar(()=>{S.lancamentos.push(item);},'addLancamentos',{itens:[paraAPI(item)]});
+      toast(`Pago ${fmt(valor)} — ${fmt(restante)} foram para ${chaveExib(prox)}`,'success');
+    }
+  });
 }
 function excluirGrupo(grupoId){
   const itens=S.lancamentos.filter(l=>l.grupoId===grupoId);if(!itens.length)return;
@@ -3877,7 +4001,8 @@ const ACOES={
   'ver-extrato':el=>abrirExtratoFiltrado({cat:el.dataset.cat,cartao:el.dataset.cartao,resp:el.dataset.resp}),
   'limpar-filtro':el=>limparFiltros([el.dataset.f]),
   'ir-lancar':()=>{mudarPagina('lancar');setTimeout(()=>{const f=$('frase');if(f)f.focus();},60);},
-  'marcar-acerto':el=>marcarAcertoDe(el.dataset.pessoa,el.dataset.recebido==='1'),
+  'receber-acerto':el=>receberAcerto(el.dataset.pessoa),
+  'desfazer-acerto':el=>desfazerAcerto(el.dataset.pessoa),
   'enviar-acerto':el=>enviarAcerto(el.dataset.pessoa),
   'salvar-cartao':el=>salvarCartao(el.dataset.id,el.dataset.nome),
   'escolher-icone':el=>abrirModalIcone(el.dataset.id,el.dataset.nome),
@@ -3922,7 +4047,7 @@ document.addEventListener('click',e=>{
   if(nav)mudarPagina(nav.dataset.pagina);
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){fecharModalReceita();fecharModalSenha();fecharModalIcone();}
+  if(e.key==='Escape'){fecharModalReceita();fecharModalSenha();fecharModalIcone();fecharPagamento();}
   if(e.key==='Enter'&&e.target&&CAMPOS_EDICAO.includes(e.target.id)&&e.target.tagName==='INPUT'){
     e.preventDefault();salvarEdicao(editandoId);return;
   }
@@ -4003,6 +4128,11 @@ on('btn-fechar-senha','click',fecharModalSenha);
 on('senha-perigo','keydown',e=>{if(e.key==='Enter')limparDados();});
 on('modal-receita','click',function(e){if(e.target===this)fecharModalReceita();});
 on('modal-icone','click',function(e){if(e.target===this)fecharModalIcone();});
+on('modal-pag','click',function(e){if(e.target===this)fecharPagamento();});
+on('pag-total','click',()=>confirmarPagamento(false));
+on('pag-parcial','click',()=>confirmarPagamento(true));
+on('pag-valor','keydown',e=>{if(e.key==='Enter'){e.preventDefault();confirmarPagamento(true);}});
+on('pag-cancelar','click',fecharPagamento);
 on('btn-fechar-icone','click',fecharModalIcone);
 on('modal-senha','click',function(e){if(e.target===this)fecharModalSenha();});
 

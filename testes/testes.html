@@ -97,6 +97,33 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('agregado só da Cindhy', no('Math.round(agregado("2026-11","Cindhy Medeiros").total*100)/100'), 611.94);
     confere('acerto da Cindhy', no('acertosDoMes("2026-11").map(a=>[a.pessoa,a.total])'), [['Cindhy Medeiros',611.94]]);
 
+    // acerto: saldo que passa de um mês para o outro
+    no(`S.lancamentos.push({id:'dz',desc:'Uber',mesChave:'2026-12',valor:100,responsavel:'Cindhy Medeiros',cartao:'Nubank',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'dz',pago:false});`);
+    const conta=(m)=>no(`(()=>{const c=contaPessoa('Cindhy Medeiros','${m}');return [c.anterior,c.devido,c.recebido,c.falta]})()`);
+    no(`S.acertos=[]`);
+    confere('sem pagamento: novembro inteiro vai para dezembro', conta('2026-12'), [611.94,711.94,0,711.94]);
+    no(`S.acertos=[{mes:'2026-11',pessoa:'Cindhy Medeiros',valor:300}]`);
+    confere('pagou parte em novembro: falta', conta('2026-11'), [0,611.94,300,311.94]);
+    confere('o que faltou entra em dezembro', conta('2026-12'), [311.94,411.94,0,411.94]);
+    no(`S.acertos=[{mes:'2026-11',pessoa:'Cindhy Medeiros',valor:700}]`);
+    confere('pagou a mais: vira crédito', conta('2026-12'), [-88.06,11.94,0,11.94]);
+    no(`S.acertos=[{mes:'2026-11',pessoa:'Cindhy Medeiros',valor:611.94}]`);
+    confere('quitou novembro: dezembro sem saldo', conta('2026-12'), [0,100,0,100]);
+    no(`S.acertos=[]`);
+
+    // fatura paga só em parte: o resto vai para a próxima fatura
+    no(`
+      S.lancamentos.push({id:'f1',desc:'Mercado',mesChave:'2026-11',valor:100,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Supermercados',parcelas:1,parcelaAtual:1,grupoId:'f1',pago:false},
+                         {id:'f2',desc:'Farmácia',mesChave:'2026-11',valor:50,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Saúde',parcelas:1,parcelaAtual:1,grupoId:'f2',pago:false});
+      outbox=[]; window.confirm=()=>true;
+      pagarGrupo('f1,f2','Fatura Nubank',true,'cartao');
+      $('pag-valor').value='120,00'; confirmarPagamento(true);
+    `);
+    confere('parcial: itens da fatura ficam pagos', no(`['f1','f2'].map(id=>S.lancamentos.find(l=>l.id===id).pago)`), [true,true]);
+    confere('parcial: restante na fatura seguinte', no(`S.lancamentos.filter(l=>l.grupoId==='SALDO-f1').map(l=>[l.mesChave,l.valor,l.cartao])`), [['2026-12',30,'Nubank']]);
+    no(`pagarGrupo('f1,f2','Fatura Nubank',false,'cartao')`);
+    confere('desfazer: volta a pendente e some o restante', no(`[S.lancamentos.find(l=>l.id==='f1').pago,S.lancamentos.filter(l=>l.grupoId==='SALDO-f1').length]`), [false,0]);
+
     // fila offline: criar e apagar antes de enviar não manda nada
     no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);
     confere('fila: apagado antes de enviar some', no('outbox.map(o=>o.acao+":"+(o.dados.itens||o.dados.ids).map(i=>i.id||i).join(","))'), ['addLancamentos:z2']);
