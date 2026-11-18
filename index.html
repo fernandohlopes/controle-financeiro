@@ -3239,6 +3239,7 @@ function lerImportacaoUI(){
   const txt=$('imp-texto').value;
   if(!txt.trim()){setHtml($('imp-resultado'),'');importacao=null;atualizarBotaoImportar();return;}
   importacao=lerImportacao(txt);
+  setHtml($('imp-resultado'),''); // lista nova começa do topo
   renderImportacao();
 }
 function renderImportacao(){
@@ -3279,9 +3280,13 @@ function renderImportacao(){
       <div class="imp-valor">${fmt(it.valor)}</div>
     </div>`;
   }).join('');
+  // redesenhar não pode perder o lugar: guarda a rolagem da lista e da página
+  const listaAntes=el.querySelector('.imp-lista'), rolLista=listaAntes?listaAntes.scrollTop:0, rolPag=window.scrollY;
   setHtml(el,(itens.length?`<div class="imp-cab"><b>${esc(fatura)}</b><span>${cont.novo} novo(s) · ${cont.igual} já lançado(s) · ${cont.corrigir} a corrigir${cont.duvida?` · ${cont.duvida} para decidir`:''}</span></div>`:'')+
     (avisos.length?`<div class="imp-avisos">${avisos.map(a=>`<div>⚠ ${esc(a)}</div>`).join('')}</div>`:'')+
     `<div class="imp-lista">${linhas}</div>`);
+  const listaDepois=el.querySelector('.imp-lista');if(listaDepois)listaDepois.scrollTop=rolLista;
+  if(Math.abs(window.scrollY-rolPag)>1)window.scrollTo(0,rolPag);
   atualizarBotaoImportar();
 }
 function atualizarBotaoImportar(){

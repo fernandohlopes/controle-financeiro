@@ -174,6 +174,17 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('importar: parcela com outro total = dúvida que acerta o total', no(`[__fo.itens[0].status,__fo.itens[0].alvo.desc,__fo.itens[0].ajustaN]`), ['duvida','Fone',true]);
     no(`outbox=[];importacao=__fo;salvarImportacao();`);
     confere('importar: "é o mesmo" deixa a compra com 10 parcelas', no(`S.lancamentos.filter(l=>l.grupoId==='fo').map(l=>l.parcelaAtual+'/'+l.parcelas).join(' ')`), '1/10 2/10 3/10 4/10 5/10 6/10 7/10 8/10 9/10 10/10');
+    // mudar a categoria de uma linha não volta a lista para o topo
+    no(`mudarPagina('lancar');$('imp-box').open=true;
+      $('imp-texto').value=['#FATURA Hipercard 2027-03',...Array.from({length:30},(_,k)=>'Loja '+k+' | '+(10+k)+',00 | | Fernando')].join(String.fromCharCode(10));
+      lerImportacaoUI();`);
+    const rolagem=no(`(()=>{const app=$('app'),disp=app.style.display;app.style.display='block';frameElement.style.height='800px';
+      const l=document.querySelector('.imp-lista');l.scrollTop=300;const antes=l.scrollTop;
+      const sel=document.querySelectorAll('.imp-cat')[20];sel.value=sel.options[1].value;sel.dispatchEvent(new Event('change',{bubbles:true}));
+      const depois=document.querySelector('.imp-lista').scrollTop;app.style.display=disp;frameElement.style.height='';
+      return antes>0&&depois===antes})()`);
+    confere('importar: editar uma linha mantém a rolagem da lista', rolagem, true);
+    no(`$('imp-texto').value='';lerImportacaoUI();mudarPagina('resumo');`);
 
     // CSV da fatura do Nubank
     no(`
