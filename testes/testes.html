@@ -64,10 +64,18 @@ document.getElementById('app').addEventListener('load',()=>{
 
     // fatura pelo fechamento
     const fat=(c,d)=>no(`(()=>{const f=faturaDoCartao('${c}',new Date('${d}T12:00'));return f?f.mes+'/'+f.ano:null})()`);
-    confere('Nubank compra 02/11 → nov', fat('Nubank','2026-11-02'), '11/2026');
-    confere('Nubank compra 05/11 → dez', fat('Nubank','2026-11-05'), '12/2026');
-    confere('Hipercard compra 20/11 → dez', fat('Hipercard','2026-11-20'), '12/2026');
-    confere('Hipercard compra 26/11 → jan', fat('Hipercard','2026-11-26'), '1/2027');
+    // o mês da fatura é o MÊS DAS COMPRAS (Nubank fecha 3, vence 10)
+    confere('Nubank compra 02/11 → out (fecha 03/11)', fat('Nubank','2026-11-02'), '10/2026');
+    confere('Nubank compra no dia do fechamento → nov', fat('Nubank','2026-11-03'), '11/2026');
+    confere('Nubank compra 05/11 → nov', fat('Nubank','2026-11-05'), '11/2026');
+    confere('Hipercard compra 20/11 → nov', fat('Hipercard','2026-11-20'), '11/2026');
+    confere('Hipercard compra 26/11 → dez', fat('Hipercard','2026-11-26'), '12/2026');
+    confere('Hipercard compra 26/12 → jan', fat('Hipercard','2026-12-26'), '1/2027');
+    const fv=(c,k)=>no(`(()=>{const v=vencimentoDoMes('${c}','${k}');return v?[v.fecha?fmtDia(v.fecha):null,fmtDia(v.vence)]:null})()`);
+    confere('fatura Nubank de nov: fecha 03/12, vence 10/12', fv('Nubank','2026-11'), ['03/12','10/12']);
+    confere('fatura Hipercard de nov: fecha 25/11, vence 05/12', fv('Hipercard','2026-11'), ['25/11','05/12']);
+    confere('vencimento 08/12 do Nubank → fatura de nov', no(`mesPeloVencimento('Nubank',new Date(2026,11,8))`), '2026-11');
+    confere('vencimento sem cartão cadastrado → mês anterior', no(`mesPeloVencimento('Mercado Pago',new Date(2026,11,8))`), '2026-11');
     confere('cartão sem fechamento', fat('Mercado Pago','2026-11-20'), null);
 
     // Lançar rápido
@@ -154,6 +162,13 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('importar: mesa e sofá não duplicou', no(`S.lancamentos.filter(l=>l.grupoId==='ms').length`), 2);
     confere('importar: segunda vez é tudo "já lançado"', no(`lerImportacao(['#FATURA Hipercard 2026-12','Netflix.com | 46,90 | Eletrônicos | Fernando','Drogaria Raia | 35,00 | Saúde | Fernando'].join('\\n')).itens.map(i=>i.status)`), ['igual','igual']);
     confere('importar: mesmo valor, nome diferente = dúvida', no(`lerImportacao('#FATURA Hipercard 2026-12\\nPAG*XYZ | 35,00 | Saúde').itens[0].status`), 'duvida');
+    no(`S.lancamentos.push(
+      {id:'sp1',desc:'Spotify',mesChave:'2027-01',valor:20.45,responsavel:'Fernando Lopes',cartao:'Hipercard',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'sp1',pago:false},
+      {id:'sp2',desc:'Spotify',mesChave:'2027-01',valor:20.45,responsavel:'Cintia Muniz',cartao:'Hipercard',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'sp2',pago:false},
+      {id:'bo1',desc:'Boné',mesChave:'2027-01',valor:11.65,responsavel:'Cindhy Medeiros',cartao:'Hipercard',categoria:'Lanches',parcelas:12,parcelaAtual:12,grupoId:'bo',pago:false},
+      {id:'pf1',desc:'Perfume',mesChave:'2027-01',valor:24.99,responsavel:'Cindhy Medeiros',cartao:'Hipercard',categoria:'Lanches',parcelas:12,parcelaAtual:12,grupoId:'pf',pago:false});`);
+    confere('importar: soma de lançamentos com o mesmo nome = já lançado', no(`lerImportacao('#FATURA Hipercard 2027-01\\nEBW*Spotify | 40,90 | Lanches').itens[0].status`), 'igual');
+    confere('importar: mesma parcela e valor, outro nome = já lançado', no(`(()=>{const i=lerImportacao('#FATURA Hipercard 2027-01\\nBah Free Shop | 11,65 | Lanches | Cindhy | 12/12').itens[0];return [i.status,i.alvo.desc]})()`), ['igual','Boné']);
 
     // CSV da fatura do Nubank
     no(`
@@ -167,7 +182,7 @@ document.getElementById('app').addEventListener('load',()=>{
         '2026-11-09,Estorno Uber,-12.00'
       ].join('\\n'),'Nubank_2026-12-08.csv');
     `);
-    confere('csv: cabeçalho com cartão e mês do vencimento', no(`__csv.texto.split('\\n')[0]`), '#FATURA Nubank 2026-12');
+    confere('csv: cabeçalho com cartão e mês das compras', no(`__csv.texto.split('\\n')[0]`), '#FATURA Nubank 2026-11');
     confere('csv: compras e estornos/pagamentos de fora', no(`[__csv.qtd,__csv.fora]`), [3,2]);
     confere('csv: pessoa e categoria pelo histórico', no(`__csv.texto.split('\\n')[1]`), 'Academia Fit | 119,90 | Saúde | Cintia');
     confere('csv: parcela separada da descrição (histórico: da Cintia)', no(`__csv.texto.split('\\n')[2]`), 'Mesa e Sofa | 1.001,79 | Eletrônicos | Cintia | 08/10');

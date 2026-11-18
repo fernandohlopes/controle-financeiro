@@ -2439,9 +2439,7 @@ function grupoPagamento(itens){
   Object.keys(porCartao).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(c=>{
     const g=porCartao[c];
     // com vencimento cadastrado, a linha diz quando vence (ou que já venceu)
-    const cad=S.cartoes.find(x=>x.nome===c), dv=cad&&diaDe(cad.vencimento);
-    const [aa,mm]=g[0].mesChave.split('-').map(Number);
-    const vence=dv?diaNoMes(aa,mm-1,dv):null;
+    const fv=vencimentoDoMes(c,g[0].mesChave), vence=fv&&fv.vence;
     const hoje0=new Date();hoje0.setHours(0,0,0,0);
     const quando=vence?(vence<hoje0&&g.some(l=>!l.pago)?`venceu ${fmtDia(vence)} · `:`vence ${fmtDia(vence)} · `):'';
     grupos.push({tipo:'cartao',rotulo:'Fatura '+c,
@@ -2571,10 +2569,12 @@ function cartaoPadrao(){
 }
 
 /* ── Fatura pelo fechamento do cartão ──
-   Compra até o dia do fechamento entra na fatura que fecha neste mês;
-   depois dele, na do mês seguinte. O "mês" do lançamento é o do
-   VENCIMENTO daquela fatura (quando você paga). Sem fechamento cadastrado,
-   nada muda: vale o mês atual. */
+   Compra antes do dia do fechamento entra na fatura que fecha neste mês;
+   do fechamento em diante, na do mês seguinte. O "mês" do lançamento é o
+   MÊS DAS COMPRAS daquela fatura (o mês em que ela esteve aberta, contado
+   15 dias antes do fechamento); o vencimento aparece à parte. Ex.: Nubank
+   fecha 01/12 e vence 08/12 → fatura de novembro. Sem fechamento
+   cadastrado, nada muda: vale o mês atual. */
 const diaDe=v=>{const n=parseInt(v,10);return n>=1&&n<=31?n:null;};
 const diaNoMes=(a,m,d)=>new Date(a,m,Math.min(d,new Date(a,m+1,0).getDate()));
 function faturaDoCartao(nome,quando=new Date()){
@@ -2582,9 +2582,30 @@ function faturaDoCartao(nome,quando=new Date()){
   const f=diaDe(c.fechamento);if(!f)return null;
   const v=diaDe(c.vencimento)||Math.min(f+7,28);
   let fecha=diaNoMes(quando.getFullYear(),quando.getMonth(),f);
-  if(quando.getDate()>fecha.getDate())fecha=diaNoMes(quando.getFullYear(),quando.getMonth()+1,f);
+  if(quando.getDate()>=fecha.getDate())fecha=diaNoMes(quando.getFullYear(),quando.getMonth()+1,f);
   const vence=v>f?diaNoMes(fecha.getFullYear(),fecha.getMonth(),v):diaNoMes(fecha.getFullYear(),fecha.getMonth()+1,v);
-  return{mes:vence.getMonth()+1,ano:vence.getFullYear(),fecha,vence,diaFecha:f,diaVence:v};
+  const ref=new Date(fecha.getFullYear(),fecha.getMonth(),fecha.getDate()-15);
+  return{mes:ref.getMonth()+1,ano:ref.getFullYear(),fecha,vence,diaFecha:f,diaVence:v};
+}
+/* Fecha e vence da fatura de um mês ("AAAA-MM" = mês das compras). */
+function vencimentoDoMes(nome,chave){
+  const c=S.cartoes.find(x=>x.nome===nome);if(!c)return null;
+  const [a,m]=String(chave).split('-').map(Number);
+  const f=diaDe(c.fechamento), v=diaDe(c.vencimento);
+  if(!f){return v?{fecha:null,vence:diaNoMes(a,m,v)}:null;} // sem fechamento: vence no mês seguinte
+  const vv=v||Math.min(f+7,28);
+  const fecha=f>=16?diaNoMes(a,m-1,f):diaNoMes(a,m,f);
+  const vence=vv>f?diaNoMes(fecha.getFullYear(),fecha.getMonth(),vv):diaNoMes(fecha.getFullYear(),fecha.getMonth()+1,vv);
+  return{fecha,vence};
+}
+/* Mês das compras a partir da data de vencimento de uma fatura. */
+function mesPeloVencimento(nome,d){
+  const c=S.cartoes.find(x=>x.nome===nome);
+  const f=c&&diaDe(c.fechamento), v=c&&(diaDe(c.vencimento)||(f&&Math.min(f+7,28)));
+  if(!f){const r=new Date(d.getFullYear(),d.getMonth()-1,1);return`${r.getFullYear()}-${pad2(r.getMonth()+1)}`;}
+  const fecha=v>f?diaNoMes(d.getFullYear(),d.getMonth(),f):diaNoMes(d.getFullYear(),d.getMonth()-1,f);
+  const r=new Date(fecha.getFullYear(),fecha.getMonth(),fecha.getDate()-15);
+  return`${r.getFullYear()}-${pad2(r.getMonth()+1)}`;
 }
 const fmtDia=d=>`${pad2(d.getDate())}/${pad2(d.getMonth()+1)}`;
 let mesTocado=false; // você escolheu o mês na mão: o app não muda mais
@@ -2599,7 +2620,7 @@ function ajustarMesPelaFatura(){
 function dicaFatura(){
   if(ehFixa()||$('usa_cartao').value!=='sim')return'';
   const ft=faturaDoCartao($('cartao').value);if(!ft)return'';
-  return ` Fatura ${$('cartao').value}: fecha ${fmtDia(ft.fecha)}, vence ${fmtDia(ft.vence)}`+(mesTocado?' (mês escolhido por você).':'.');
+  return ` Fatura ${$('cartao').value} de ${chaveExib(`${ft.ano}-${pad2(ft.mes)}`)}: fecha ${fmtDia(ft.fecha)}, vence ${fmtDia(ft.vence)}`+(mesTocado?' (mês escolhido por você).':'.');
 }
 function renderLancar(){
   const r=$('responsavel_unico');
@@ -3152,23 +3173,58 @@ function lerImportacao(texto){
 }
 /* compara com o que já existe; cada lançamento existente só "casa" uma vez */
 function classificarImportacao(itens){
+  /* Ordem da conferência (cada lançamento existente casa uma vez só):
+     1) mesmo nome e mesmo valor → já lançado (primeiro todos estes, para que
+        dois itens parecidos, como 119,90 e 119,89, peguem cada um o seu);
+     2) mesmo nome, soma de lançamentos separados (Spotify 20,45 + 20,45);
+     3) mesmo nome, outro valor → corrigir;
+     4) parcela igual (x/N), nome diferente: um só com o mesmo valor → já
+        lançado; um só candidato com valor perto (até 10%) → corrigir;
+     5) mesmo valor, nome diferente (até com outro N) → dúvida;
+     6) senão, novo. */
   const usados=new Set();
-  itens.forEach(it=>{
-    const mesmos=S.lancamentos.filter(l=>!usados.has(l.id)&&l.cartao===it.cartao&&l.mesChave===it.mesChave&&
-      (it.parcelas>1?(l.parcelas===it.parcelas&&l.parcelaAtual===it.parcelaAtual):l.parcelas<=1));
-    // uma compra dividida existe como várias linhas "(Div.)": junta pelo nome
+  const livre=g=>g.itens.every(l=>!usados.has(l.id));
+  const marca=g=>g.itens.forEach(l=>usados.add(l.id));
+  const quase=(a,b)=>Math.abs(a-b)<0.01;
+  const gruposDe=lst=>{
     const grupos={};
-    mesmos.forEach(l=>{const k=chaveDesc(semDiv(l.desc))+'|'+(ehDividido(l)?'div':l.id);(grupos[k]=grupos[k]||[]).push(l);});
-    const lista=Object.values(grupos).map(g=>({itens:g,desc:semDiv(g[0].desc),total:r2(somaValores(g))}));
+    lst.forEach(l=>{const k=chaveDesc(semDiv(l.desc))+'|'+(ehDividido(l)?'div':l.id);(grupos[k]=grupos[k]||[]).push(l);});
+    return Object.values(grupos).map(g=>({itens:g,desc:semDiv(g[0].desc),total:r2(somaValores(g))}));
+  };
+  const candidatos=it=>gruposDe(S.lancamentos.filter(l=>!usados.has(l.id)&&l.cartao===it.cartao&&l.mesChave===it.mesChave&&
+      (it.parcelas>1?(l.parcelas===it.parcelas&&l.parcelaAtual===it.parcelaAtual):l.parcelas<=1)));
+  const define=(it,status,g)=>{
+    it.status=status;marca(g);
+    if(g){it.alvo=g;it.outroNome=!nomesParecidos(it.desc,g.desc);}
+    it.incluir=status==='corrigir';
+    if(status==='duvida')it.ehOutro=false;
+  };
+  itens.forEach(it=>{it.status=null;it.alvo=null;it.outroNome=false;});
+  // 1) nome e valor iguais
+  itens.forEach(it=>{
+    const g=candidatos(it).find(g=>nomesParecidos(it.desc,g.desc)&&quase(g.total,it.valor));
+    if(g)define(it,'igual',g);
+  });
+  itens.filter(it=>!it.status).forEach(it=>{
+    const lista=candidatos(it);
     const porNome=lista.filter(g=>nomesParecidos(it.desc,g.desc));
-    const igual=porNome.find(g=>Math.abs(g.total-it.valor)<0.01);
-    const outroValor=porNome.find(g=>Math.abs(g.total-it.valor)>=0.01);
-    const mesmoValor=lista.find(g=>!porNome.includes(g)&&Math.abs(g.total-it.valor)<0.01);
-    const marca=g=>g.itens.forEach(l=>usados.add(l.id));
-    if(igual){it.status='igual';it.alvo=igual;marca(igual);it.incluir=false;}
-    else if(outroValor){it.status='corrigir';it.alvo=outroValor;marca(outroValor);it.incluir=true;}
-    else if(mesmoValor){it.status='duvida';it.alvo=mesmoValor;marca(mesmoValor);it.incluir=false;it.ehOutro=false;}
-    else{it.status='novo';it.incluir=!!it.categoria;}
+    // 2) soma de lançamentos separados com o mesmo nome
+    if(porNome.length>1&&quase(r2(porNome.reduce((s,g)=>s+g.total,0)),it.valor)){
+      define(it,'igual',{itens:porNome.flatMap(g=>g.itens),desc:porNome[0].desc,total:it.valor});return;
+    }
+    // 3) mesmo nome, outro valor
+    if(porNome.length){define(it,'corrigir',porNome[0]);return;}
+    // 4) mesma parcela, um só candidato
+    if(it.parcelas>1){
+      const mesmoValorParc=lista.filter(g=>quase(g.total,it.valor));
+      if(mesmoValorParc.length===1){define(it,'igual',mesmoValorParc[0]);return;}
+      if(lista.length===1&&Math.abs(lista[0].total-it.valor)<=it.valor*0.1){define(it,'corrigir',lista[0]);return;}
+    }
+    // 5) mesmo valor, nome diferente (mesmo cartão e mês, qualquer parcela)
+    const mesmoValor=lista.find(g=>quase(g.total,it.valor))||
+      gruposDe(S.lancamentos.filter(l=>!usados.has(l.id)&&l.cartao===it.cartao&&l.mesChave===it.mesChave)).find(g=>quase(g.total,it.valor));
+    if(mesmoValor){define(it,'duvida',mesmoValor);return;}
+    it.status='novo';it.incluir=!!it.categoria;
   });
 }
 let importacao=null;
@@ -3197,8 +3253,9 @@ function renderImportacao(){
     const quem=it.pessoas.map(primeiroNome).join(' + ');
     let st='';
     if(it.status==='novo')st=`<span class="imp-st novo">Novo</span>${it.parcelas>1&&it.parcelaAtual<it.parcelas?` <span class="imp-obs">cria até ${pad2(it.parcelas)}/${pad2(it.parcelas)}</span>`:''}`;
-    if(it.status==='igual')st=`<span class="imp-st igual">✓ Já lançado</span>`;
-    if(it.status==='corrigir')st=`<span class="imp-st corrigir">Corrigir valor</span> <span class="imp-obs">${fmt(it.alvo.total)} → ${fmt(it.valor)}</span>`;
+    const comoNome=it.outroNome?` <span class="imp-obs">como "${esc(it.alvo.desc)}"</span>`:'';
+    if(it.status==='igual')st=`<span class="imp-st igual">✓ Já lançado</span>${comoNome}`;
+    if(it.status==='corrigir')st=`<span class="imp-st corrigir">Corrigir valor</span> <span class="imp-obs">${fmt(it.alvo.total)} → ${fmt(it.valor)}</span>${comoNome}`;
     if(it.status==='duvida')st=`<span class="imp-st duvida">Parece "${esc(it.alvo.desc)}"</span>
       <span class="imp-escolha"><button class="${it.ehOutro?'':'on'}" data-imp="mesmo" data-i="${i}">É o mesmo</button><button class="${it.ehOutro?'on':''}" data-imp="outro" data-i="${i}">É outro</button></span>`;
     const podeMarcar=it.status==='novo'||it.status==='corrigir';
@@ -3277,7 +3334,8 @@ function receberCompartilhado(){
 
 /* ── CSV da fatura (Nubank e parecidos) ──
    Fatura do Nubank: "date,title,amount" (às vezes com "category"), um
-   arquivo por fatura chamado Nubank_AAAA-MM-DD.csv (data do vencimento).
+   arquivo por fatura chamado Nubank_AAAA-MM-DD.csv (data do vencimento;
+   o mês da fatura vira o mês das compras).
    Vira a mesma lista do Importar fatura, com categoria e pessoa sugeridas
    pelo histórico. Valores negativos (pagamento, estorno) ficam de fora. */
 function lerCSV(texto){
@@ -3306,8 +3364,9 @@ function csvParaLista(texto,nomeArquivo){
   const nome=String(nomeArquivo||'');
   const cartao=acharCartaoNome(nome.split(/[_\s.-]/)[0])||(S.cartoes.find(c=>/nubank/i.test(c.nome))||{}).nome||(S.cartoes[0]||{}).nome;
   let mes=null;
+  // a data do arquivo é o VENCIMENTO; o mês da fatura é o das compras
   const dv=nome.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if(dv)mes=`${dv[1]}-${dv[2]}`;
+  if(dv)mes=mesPeloVencimento(cartao,new Date(+dv[1],+dv[2]-1,+dv[3]));
   const compras=[],fora=[];let ultimaData=null;
   tab.slice(1).forEach(l=>{
     const desc0=(l[iDesc]||'').trim();
@@ -3921,7 +3980,7 @@ function renderAjustes(){
       <div class="lanc-ico" aria-hidden="true">💳</div>
       <div class="settings-item-info">
         <div class="settings-item-name">${esc(c.nome)}</div>
-        <div class="settings-item-sub">${contarUso('cartao',c.nome)} lançamento(s) · ${ft?`compra hoje vai para a fatura de ${esc(chaveExib(`${ft.ano}-${pad2(ft.mes)}`))}`:'sem fechamento: vale o mês da compra'}</div>
+        <div class="settings-item-sub">${contarUso('cartao',c.nome)} lançamento(s) · ${ft?`compra hoje vai para a fatura de ${esc(chaveExib(`${ft.ano}-${pad2(ft.mes)}`))} (fecha ${fmtDia(ft.fecha)}, vence ${fmtDia(ft.vence)})`:'sem fechamento: vale o mês da compra'}</div>
       </div>
       <div class="settings-item-actions">
         <label class="mini-campo">Fecha dia<input type="number" min="1" max="31" class="inp inp-dia" id="fch-${esc(c.id)}" value="${f||''}" inputmode="numeric"></label>

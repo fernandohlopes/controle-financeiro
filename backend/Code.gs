@@ -1050,7 +1050,18 @@ function lembreteDiario() {
       const venc = new Date(base.getFullYear(), base.getMonth(), Math.min(dv, ultimo), 12);
       const dias = Math.round((venc - hoje) / 864e5);
       if (dias < 0 || dias > 3) continue;
-      const chaveMes = Utilities.formatDate(venc, tz, 'yyyy-MM');
+      // o mês da fatura é o MÊS DAS COMPRAS: 15 dias antes do fechamento
+      // (Nubank fecha 01/12 e vence 08/12 → fatura de novembro)
+      const df = parseInt(c.fechamento, 10);
+      let ref;
+      if (df >= 1 && df <= 31) {
+        const mf = dv > df ? venc.getMonth() : venc.getMonth() - 1;
+        const ultF = new Date(venc.getFullYear(), mf + 1, 0).getDate();
+        ref = new Date(venc.getFullYear(), mf, Math.min(df, ultF) - 15, 12);
+      } else {
+        ref = new Date(venc.getFullYear(), venc.getMonth() - 1, 1, 12);
+      }
+      const chaveMes = Utilities.formatDate(ref, tz, 'yyyy-MM');
       const marca = 'LEMBRETE_' + c.id + '_' + chaveMes;
       if (props.getProperty(marca)) continue;
       const itens = lanc.filter(function (l) { return mesChaveDe(l.mes) === chaveMes && l.cartao === c.nome && pendente(l); });

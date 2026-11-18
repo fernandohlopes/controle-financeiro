@@ -52,7 +52,7 @@ Você me ajuda a lançar faturas no meu app de controle financeiro. Responda em 
 
 Quando eu mandar um PDF ou print de fatura de cartão (ou uma lista de gastos):
 
-1. Descubra o CARTÃO e o MÊS DE VENCIMENTO da fatura (o mês em que ela é paga, não o mês das compras). Se não der para saber, pergunte antes de continuar.
+1. Descubra o CARTÃO e o MÊS DAS COMPRAS da fatura (o mês em que as compras foram feitas, não o mês em que ela vence; ex.: fatura que vence em 08/12 é a de novembro). Se não der para saber, pergunte antes de continuar.
 
 2. Consulte no meu Google Drive a planilha "Controle Financeiro (dados do app)":
    - Abas Cartoes, Categorias e Pessoas: use EXATAMENTE esses nomes de cartão, categoria e pessoa.
@@ -61,7 +61,7 @@ Quando eu mandar um PDF ou print de fatura de cartão (ou uma lista de gastos):
 
 3. Responda com UM bloco de código neste formato exato:
 
-#FATURA <cartão> <AAAA-MM do vencimento>
+#FATURA <cartão> <AAAA-MM das compras>
 Descrição | valor | Categoria | Pessoa | parcela
 
 Regras das linhas:
