@@ -588,6 +588,7 @@ details.filtros-box[open]>summary::after{content:'−'}
 .imp-meta{font-size:.76rem;color:var(--text3);margin-top:2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .imp-cat{font:inherit;font-size:.76rem;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;max-width:170px}
 .imp-cat.falta{border-color:var(--amber);color:var(--amber)}
+.imp-pes{font:inherit;font-size:.76rem;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;max-width:150px}
 .imp-status{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.72rem}
 .imp-st{font-weight:600;padding:2px 7px;border-radius:5px}
 .imp-st.novo{color:var(--green);background:var(--green-dim)}
@@ -1060,12 +1061,14 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
   </div>
   <!-- Importar fatura: cola a lista do Claude (ou de outro lugar) -->
   <details class="card imp-card" id="imp-box">
-    <summary><span class="card-label" style="margin:0">Importar fatura</span><span class="imp-dica">cole a lista do Claude</span></summary>
+    <summary><span class="card-label" style="margin:0">Importar fatura</span><span class="imp-dica">CSV do Nubank ou lista do Claude</span></summary>
     <div class="imp-corpo">
       <textarea id="imp-texto" class="inp" rows="6" spellcheck="false" autocomplete="off"
         placeholder="#FATURA Nubank 2026-12&#10;Mercado | 389,90 | Supermercados | Fernando&#10;Mesa e sofá | 1001,79 | Casa e Móveis | Cintia | 08/10"
         aria-label="Lista de compras da fatura"></textarea>
       <div class="imp-botoes">
+        <label class="btn btn-ghost btn-sm" for="imp-arquivo" style="margin-right:auto">Abrir arquivo .csv</label>
+        <input type="file" id="imp-arquivo" accept=".csv,text/csv,text/plain" hidden>
         <button class="btn btn-ghost btn-sm" id="imp-colar">Colar</button>
         <button class="btn btn-ghost btn-sm" id="imp-ler">Ler</button>
       </div>
@@ -3180,6 +3183,13 @@ function renderImportacao(){
   if(!importacao){setHtml(el,'');return;}
   const {itens,avisos}=importacao;
   const cont={novo:0,igual:0,corrigir:0,duvida:0};itens.forEach(i=>cont[i.status]++);
+  const opcoesPessoa=atual=>{
+    const chave=atual.join('+');
+    const ops=S.pessoas.map(p=>[p.nome,primeiroNome(p.nome)]);
+    if(pessoaPrincipal)S.pessoas.filter(p=>p.nome!==pessoaPrincipal).forEach(p=>ops.push([pessoaPrincipal+'+'+p.nome,`${primeiroNome(pessoaPrincipal)} + ${primeiroNome(p.nome)}`]));
+    if(!ops.some(o=>o[0]===chave))ops.push([chave,atual.map(primeiroNome).join(' + ')]);
+    return ops.map(([v,t])=>`<option value="${esc(v)}"${v===chave?' selected':''}>${esc(t)}</option>`).join('');
+  };
   const catOpts=sel=>S.categorias.map(c=>`<option${c.nome===sel?' selected':''}>${esc(c.nome)}</option>`).join('');
   const fatura=[...new Set(itens.map(i=>`${i.cartao} · ${chaveExib(i.mesChave)}`))].join(' / ');
   const linhas=itens.map((it,i)=>{
@@ -3198,7 +3208,7 @@ function renderImportacao(){
         <div class="imp-desc"><span class="ico-inline" aria-hidden="true">${iconeCategoria(it.categoria||'')}</span>${esc(it.desc)}${parc}</div>
         <div class="imp-meta">
           ${it.status==='novo'?`<select class="imp-cat${it.categoria?'':' falta'}" data-i="${i}" aria-label="Categoria">${it.categoria?'':'<option value="" selected disabled>escolha a categoria</option>'}${catOpts(it.categoria)}</select>`:esc(it.categoria||it.catTexto||'')}
-          · ${esc(quem)}${it.pessoas.length>1?' (dividido)':''}
+          · ${it.status==='novo'?`<select class="imp-pes" data-i="${i}" aria-label="De quem é">${opcoesPessoa(it.pessoas)}</select>`:esc(quem)+(it.pessoas.length>1?' (dividido)':'')}
         </div>
         <div class="imp-status">${st}</div>
       </div>
@@ -3263,6 +3273,77 @@ function receberCompartilhado(){
   const box=$('imp-box');if(box)box.open=true;
   $('imp-texto').value=t;lerImportacaoUI();
   box&&box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ── CSV da fatura (Nubank e parecidos) ──
+   Fatura do Nubank: "date,title,amount" (às vezes com "category"), um
+   arquivo por fatura chamado Nubank_AAAA-MM-DD.csv (data do vencimento).
+   Vira a mesma lista do Importar fatura, com categoria e pessoa sugeridas
+   pelo histórico. Valores negativos (pagamento, estorno) ficam de fora. */
+function lerCSV(texto){
+  const linhas=[];let campo='',linha=[],aspas=false;
+  const t=String(texto||'').replace(/^﻿/,'');
+  const sep=(t.split('\n')[0].match(/;/g)||[]).length>(t.split('\n')[0].match(/,/g)||[]).length?';':',';
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(aspas){if(c==='"'){if(t[i+1]==='"'){campo+='"';i++;}else aspas=false;}else campo+=c;}
+    else if(c==='"')aspas=true;
+    else if(c===sep){linha.push(campo);campo='';}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;linha.push(campo);linhas.push(linha);linha=[];campo='';}
+    else campo+=c;
+  }
+  if(campo!==''||linha.length){linha.push(campo);linhas.push(linha);}
+  return linhas.filter(l=>l.some(x=>x.trim()!==''));
+}
+function csvParaLista(texto,nomeArquivo){
+  const tab=lerCSV(texto);if(tab.length<2)return{erro:'O arquivo está vazio ou não é um CSV.'};
+  const cab=tab[0].map(h=>normTxt(h).trim());
+  const col=(...nomes)=>cab.findIndex(h=>nomes.includes(h));
+  const iData=col('date','data'), iDesc=col('title','descricao','description','estabelecimento','lancamento','historico'),
+        iValor=col('amount','valor','value','valor (r$)');
+  if(iDesc<0||iValor<0)return{erro:'Não reconheci as colunas do CSV (preciso de descrição e valor).'};
+  // cartão e mês: pelo nome do arquivo ("Nubank_2026-12-08.csv"); senão pelo fechamento do cartão
+  const nome=String(nomeArquivo||'');
+  const cartao=acharCartaoNome(nome.split(/[_\s.-]/)[0])||(S.cartoes.find(c=>/nubank/i.test(c.nome))||{}).nome||(S.cartoes[0]||{}).nome;
+  let mes=null;
+  const dv=nome.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(dv)mes=`${dv[1]}-${dv[2]}`;
+  const compras=[],fora=[];let ultimaData=null;
+  tab.slice(1).forEach(l=>{
+    const desc0=(l[iDesc]||'').trim();
+    let v=String(l[iValor]||'').trim().replace(/[R$\s]/g,'');
+    if(/,\d{1,2}$/.test(v))v=v.replace(/\./g,'').replace(',','.');
+    const valor=Math.round(parseFloat(v)*100)/100;
+    if(!desc0||isNaN(valor))return;
+    if(iData>=0&&l[iData]){const d=new Date(l[iData].trim().replace(/^(\d{2})\/(\d{2})\/(\d{4})$/,'$3-$2-$1')+'T12:00');if(!isNaN(d))ultimaData=!ultimaData||d>ultimaData?d:ultimaData;}
+    if(valor<=0){fora.push(`# fora: ${desc0} ${fmtNum(valor)}`);return;}
+    // "Loja X - Parcela 2/10"
+    const m=desc0.match(/^(.*?)[\s\-–]*parcela\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*$/i);
+    const desc=(m?m[1]:desc0).replace(/\s+/g,' ').trim();
+    compras.push({desc,valor,parc:m?`${pad2(+m[2])}/${pad2(+m[3])}`:''});
+  });
+  if(!mes){
+    const ft=ultimaData&&faturaDoCartao(cartao,ultimaData);
+    const h=new Date();mes=ft?`${ft.ano}-${pad2(ft.mes)}`:`${h.getFullYear()}-${pad2(h.getMonth()+1)}`;
+  }
+  const linhas=compras.map(c=>{
+    const h=sugestaoDoHistorico(c.desc);
+    const cat=(h&&h.categoria)||categoriaPorDica(c.desc)||'';
+    const pessoa=h&&h.responsavel?primeiroNome(h.responsavel):(pessoaPrincipal?primeiroNome(pessoaPrincipal):'');
+    return `${c.desc} | ${fmtNum(c.valor)} | ${cat} | ${pessoa}${c.parc?' | '+c.parc:''}`;
+  });
+  return{texto:[`#FATURA ${cartao} ${mes}`,...linhas,...fora].join('\n'),qtd:compras.length,fora:fora.length,cartao,mes};
+}
+function abrirArquivoImportacao(arq){
+  if(!arq)return;
+  const leitor=new FileReader();
+  leitor.onload=()=>{
+    const r=csvParaLista(leitor.result,arq.name);
+    if(r.erro){toast(r.erro,'error');return;}
+    $('imp-texto').value=r.texto;lerImportacaoUI();
+    toast(`${arq.name}: ${r.qtd} compra(s) da fatura ${r.cartao} de ${chaveExib(r.mes)}`+(r.fora?` · ${r.fora} pagamento(s)/estorno(s) de fora`:''),'info');
+  };
+  leitor.readAsText(arq,'utf-8');
 }
 
 /* ═══════════════ EXTRATO ═══════════════ */
@@ -4339,12 +4420,14 @@ on('btn-frase-add','click',adicionarFrase);
 on('btn-frase-ajustar','click',ajustarFrase);
 on('imp-ler','click',lerImportacaoUI);
 on('imp-colar','click',colarImportacao);
+on('imp-arquivo','change',e=>{abrirArquivoImportacao(e.target.files[0]);e.target.value='';});
 on('imp-salvar','click',salvarImportacao);
 on('imp-texto','input',()=>{clearTimeout(window.__impT);window.__impT=setTimeout(lerImportacaoUI,350);});
 on('imp-resultado','change',e=>{
   const i=+e.target.dataset.i;if(!importacao||isNaN(i))return;const it=importacao.itens[i];
   if(e.target.classList.contains('imp-check'))it.incluir=e.target.checked;
   if(e.target.classList.contains('imp-cat')){it.categoria=e.target.value;it.incluir=true;}
+  if(e.target.classList.contains('imp-pes'))it.pessoas=e.target.value.split('+');
   renderImportacao();
 });
 on('imp-resultado','click',e=>{

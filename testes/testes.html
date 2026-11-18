@@ -155,6 +155,27 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('importar: segunda vez é tudo "já lançado"', no(`lerImportacao(['#FATURA Hipercard 2026-12','Netflix.com | 46,90 | Eletrônicos | Fernando','Drogaria Raia | 35,00 | Saúde | Fernando'].join('\\n')).itens.map(i=>i.status)`), ['igual','igual']);
     confere('importar: mesmo valor, nome diferente = dúvida', no(`lerImportacao('#FATURA Hipercard 2026-12\\nPAG*XYZ | 35,00 | Saúde').itens[0].status`), 'duvida');
 
+    // CSV da fatura do Nubank
+    no(`
+      S.lancamentos.push({id:'hc',desc:'Academia Fit',mesChave:'2026-10',valor:119.9,responsavel:'Cintia Muniz',cartao:'Nubank',categoria:'Saúde',parcelas:1,parcelaAtual:1,grupoId:'hc',pago:true});
+      window.__csv=csvParaLista([
+        'date,title,amount',
+        '2026-11-05,Academia Fit,119.90',
+        '2026-11-06,"Mesa e Sofa - Parcela 8/10",1001.79',
+        '2026-11-07,Pagamento recebido,-2000.00',
+        '2026-11-08,Mercado Assai,389.90',
+        '2026-11-09,Estorno Uber,-12.00'
+      ].join('\\n'),'Nubank_2026-12-08.csv');
+    `);
+    confere('csv: cabeçalho com cartão e mês do vencimento', no(`__csv.texto.split('\\n')[0]`), '#FATURA Nubank 2026-12');
+    confere('csv: compras e estornos/pagamentos de fora', no(`[__csv.qtd,__csv.fora]`), [3,2]);
+    confere('csv: pessoa e categoria pelo histórico', no(`__csv.texto.split('\\n')[1]`), 'Academia Fit | 119,90 | Saúde | Cintia');
+    confere('csv: parcela separada da descrição (histórico: da Cintia)', no(`__csv.texto.split('\\n')[2]`), 'Mesa e Sofa | 1.001,79 | Eletrônicos | Cintia | 08/10');
+    confere('csv: categoria por palavra-chave', no(`__csv.texto.split('\\n')[3]`), 'Mercado Assai | 389,90 | Supermercados | Fernando');
+    confere('csv: lista lida pelo importador', no(`lerImportacao(__csv.texto).itens.map(i=>[i.desc,i.valor,i.pessoas.join('+'),i.parcelaAtual])`),
+      [['Academia Fit',119.9,'Cintia Muniz',1],['Mesa e Sofa',1001.79,'Cintia Muniz',8],['Mercado Assai',389.9,'Fernando Lopes',1]]);
+    confere('csv: separador ; e valor com vírgula', no(`csvParaLista('data;descrição;valor\\n05/11/2026;Padaria;12,50','fatura.csv').texto.split('\\n')[1]`), 'Padaria | 12,50 | Lanches | Fernando');
+
     // fila offline: criar e apagar antes de enviar não manda nada
     no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);
     confere('fila: apagado antes de enviar some', no('outbox.map(o=>o.acao+":"+(o.dados.itens||o.dados.ids).map(i=>i.id||i).join(","))'), ['addLancamentos:z2']);

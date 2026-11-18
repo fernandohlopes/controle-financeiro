@@ -1,3 +1,17 @@
+# Importar faturas
+
+| Cartão | Como importar |
+|---|---|
+| **Nubank** | Exporte o **CSV** da fatura e abra direto no app: **Lançar → Importar fatura → Abrir arquivo .csv**. Não precisa do Claude. |
+| **Outros cartões** (prints ou PDF) | Pelo Projeto **"Lançamentos"** no Claude (abaixo) e cole a resposta no app. |
+
+No app, cada compra aparece como **Novo**, **✓ Já lançado** (fica de fora),
+**Corrigir valor** ou **Parece…** (você decide). Categoria e pessoa vêm do
+seu histórico e podem ser trocadas em cada linha. Nada grava antes de
+**Salvar**.
+
+---
+
 # Projeto "Lançamentos" no Claude
 
 Uma conversa do Claude só para ler faturas (PDF ou print) e devolver a lista
