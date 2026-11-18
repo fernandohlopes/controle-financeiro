@@ -124,6 +124,37 @@ document.getElementById('app').addEventListener('load',()=>{
     no(`pagarGrupo('f1,f2','Fatura Nubank',false,'cartao')`);
     confere('desfazer: volta a pendente e some o restante', no(`[S.lancamentos.find(l=>l.id==='f1').pago,S.lancamentos.filter(l=>l.grupoId==='SALDO-f1').length]`), [false,0]);
 
+    // importar fatura: não duplica, corrige valor, pergunta na dúvida
+    no(`
+      S.lancamentos=S.lancamentos.filter(l=>!['f1','f2'].includes(l.id));
+      S.lancamentos.push(
+        {id:'m8',desc:'Mesa e sofá',mesChave:'2026-12',valor:1001.79,responsavel:'Cintia Muniz',cartao:'Hipercard',categoria:'Eletrônicos',parcelas:10,parcelaAtual:8,grupoId:'ms',pago:false},
+        {id:'m9',desc:'Mesa e sofá',mesChave:'2027-01',valor:1001.79,responsavel:'Cintia Muniz',cartao:'Hipercard',categoria:'Eletrônicos',parcelas:10,parcelaAtual:9,grupoId:'ms',pago:false},
+        {id:'n1',desc:'Netflix',mesChave:'2026-12',valor:44.9,responsavel:'Fernando Lopes',cartao:'Hipercard',categoria:'Eletrônicos',parcelas:1,parcelaAtual:1,grupoId:'n1',pago:false},
+        {id:'p1',desc:'Pizza (Div.)',mesChave:'2026-12',valor:60,responsavel:'Fernando Lopes',cartao:'Hipercard',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'pz-1',pago:false},
+        {id:'p2',desc:'Pizza (Div.)',mesChave:'2026-12',valor:60,responsavel:'Cindhy Medeiros',cartao:'Hipercard',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'pz-2',pago:false});
+      window.__imp=lerImportacao([
+        '#FATURA Hipercard 2026-12',
+        'MESA E SOFA LTDA | 1001,79 | Eletrônicos | Cintia | 08/10',
+        'Netflix.com | 46,90 | Eletrônicos | Fernando',
+        'Pizzaria Bella | 120,00 | Lanches | Fernando+Cindhy',
+        'Restaurante Sul | 120,00 | Lanches | Fernando',
+        'Drogaria Raia | 35,00 | Saúde | Fernando',
+        'TV Samsung | 289,90 | Eletrônicos | Fernando | 03/10',
+        '# estorno: Uber -12,00'
+      ].join('\\n'));
+    `);
+    confere('importar: status de cada linha', no(`__imp.itens.map(i=>i.status)`), ['igual','corrigir','igual','novo','novo','novo']);
+    confere('importar: correção mostra o valor antigo', no(`__imp.itens[1].alvo.total`), 44.9);
+    confere('importar: sem avisos', no(`__imp.avisos`), []);
+    no(`outbox=[];salvarImportacao.call(null);importacao=__imp;salvarImportacao();`);
+    confere('importar: Netflix corrigido', no(`S.lancamentos.find(l=>l.id==='n1').valor`), 46.9);
+    confere('importar: parcelado novo cria da 3ª à 10ª', no(`S.lancamentos.filter(l=>l.desc==='TV Samsung').map(l=>l.parcelaAtual+':'+l.mesChave)`),
+      ['3:2026-12','4:2027-01','5:2027-02','6:2027-03','7:2027-04','8:2027-05','9:2027-06','10:2027-07']);
+    confere('importar: mesa e sofá não duplicou', no(`S.lancamentos.filter(l=>l.grupoId==='ms').length`), 2);
+    confere('importar: segunda vez é tudo "já lançado"', no(`lerImportacao(['#FATURA Hipercard 2026-12','Netflix.com | 46,90 | Eletrônicos | Fernando','Drogaria Raia | 35,00 | Saúde | Fernando'].join('\\n')).itens.map(i=>i.status)`), ['igual','igual']);
+    confere('importar: mesmo valor, nome diferente = dúvida', no(`lerImportacao('#FATURA Hipercard 2026-12\\nPAG*XYZ | 35,00 | Saúde').itens[0].status`), 'duvida');
+
     // fila offline: criar e apagar antes de enviar não manda nada
     no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);
     confere('fila: apagado antes de enviar some', no('outbox.map(o=>o.acao+":"+(o.dados.itens||o.dados.ids).map(i=>i.id||i).join(","))'), ['addLancamentos:z2']);

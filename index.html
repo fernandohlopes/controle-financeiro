@@ -565,6 +565,41 @@ details.filtros-box[open]>summary::after{content:'−'}
 .projecao b.neg{color:var(--red)}
 .projecao small{font-size:.66rem;color:var(--text3)}
 
+/* ── Importar fatura ── */
+.imp-card{padding:0}
+.imp-card>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px}
+.imp-card>summary::-webkit-details-marker{display:none}
+.imp-card>summary::after{content:'+';color:var(--gold);font-size:1.1rem}
+.imp-card[open]>summary::after{content:'−'}
+.imp-dica{margin-left:auto;font-size:.74rem;color:var(--text3)}
+.imp-corpo{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+#imp-texto{font-family:var(--mono);font-size:.8rem;line-height:1.5;resize:vertical;min-height:120px}
+.imp-botoes{display:flex;gap:8px;justify-content:flex-end}
+.imp-cab{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;font-size:.8rem;color:var(--text3);margin:4px 0 6px}
+.imp-cab b{color:var(--text);font-weight:600}
+.imp-avisos{font-size:.76rem;color:var(--amber);display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.imp-lista{display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto}
+.imp-linha{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:4px 10px;align-items:start;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.imp-linha.fora{opacity:.55}
+.imp-linha.corrigir{border-color:rgba(251,191,36,.35)}
+.imp-linha.duvida{border-color:rgba(232,200,122,.45);border-style:dashed}
+.imp-check{width:18px;height:18px;margin-top:2px;accent-color:var(--gold)}
+.imp-desc{font-size:.9rem;font-weight:500;color:var(--text)}
+.imp-meta{font-size:.76rem;color:var(--text3);margin-top:2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.imp-cat{font:inherit;font-size:.76rem;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;max-width:170px}
+.imp-cat.falta{border-color:var(--amber);color:var(--amber)}
+.imp-status{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.72rem}
+.imp-st{font-weight:600;padding:2px 7px;border-radius:5px}
+.imp-st.novo{color:var(--green);background:var(--green-dim)}
+.imp-st.igual{color:var(--text3);background:var(--card2)}
+.imp-st.corrigir{color:var(--amber);background:rgba(251,191,36,.1)}
+.imp-st.duvida{color:var(--gold2);background:var(--gold-dim)}
+.imp-obs{color:var(--text3)}
+.imp-escolha{display:inline-flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.imp-escolha button{font:inherit;font-size:.72rem;background:none;border:none;color:var(--text2);padding:4px 9px;cursor:pointer}
+.imp-escolha button.on{background:var(--gold-dim);color:var(--gold2);font-weight:600}
+.imp-valor{font-size:.92rem;font-weight:650;white-space:nowrap}
+
 /* ── Janela de pagamento ── */
 .pag-ou{display:flex;align-items:center;gap:10px;margin:16px 0 10px;font-size:.76rem;color:var(--text3)}
 .pag-ou::before,.pag-ou::after{content:'';flex:1;height:1px;background:var(--border)}
@@ -1023,6 +1058,22 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
     <div class="frase-previa" id="frase-previa" aria-live="polite"></div>
     <button class="btn btn-ghost btn-sm" id="btn-frase-ajustar" style="margin-top:10px">Ajustar no formulário</button>
   </div>
+  <!-- Importar fatura: cola a lista do Claude (ou de outro lugar) -->
+  <details class="card imp-card" id="imp-box">
+    <summary><span class="card-label" style="margin:0">Importar fatura</span><span class="imp-dica">cole a lista do Claude</span></summary>
+    <div class="imp-corpo">
+      <textarea id="imp-texto" class="inp" rows="6" spellcheck="false" autocomplete="off"
+        placeholder="#FATURA Nubank 2026-12&#10;Mercado | 389,90 | Supermercados | Fernando&#10;Mesa e sofá | 1001,79 | Casa e Móveis | Cintia | 08/10"
+        aria-label="Lista de compras da fatura"></textarea>
+      <div class="imp-botoes">
+        <button class="btn btn-ghost btn-sm" id="imp-colar">Colar</button>
+        <button class="btn btn-ghost btn-sm" id="imp-ler">Ler</button>
+      </div>
+      <div id="imp-resultado" aria-live="polite"></div>
+      <button class="btn btn-success btn-full" id="imp-salvar" disabled>Salvar importação</button>
+      <div class="field-hint">Compras já lançadas (mesmo cartão, mês e parcela) ficam de fora; se o valor mudou, ele é corrigido. Nada é gravado antes de Salvar.</div>
+    </div>
+  </details>
   <div class="card">
     <div class="form-grid">
       <div class="field full">
@@ -3022,6 +3073,198 @@ function ajustarFrase(){
   toast('Formulário preenchido — ajuste e toque em "Adicionar à conferência"','info');
 }
 
+/* ═══════════════ IMPORTAR FATURA ═══════════════
+   Cola a lista que o Claude devolve (ou que você mesmo escreve):
+     #FATURA Nubank 2026-12
+     Mercado Assaí | 389,90 | Supermercados | Fernando
+     Mesa e sofá | 1001,79 | Casa e Móveis | Cintia | 08/10
+     Pizza | 120,00 | Lanches | Fernando+Cindhy
+   Linhas sem "|" são lidas como no Lançar rápido. Linhas com "#" (fora o
+   #FATURA) são comentários e ficam de fora.
+   Cada compra é comparada com o que já está lançado no mesmo cartão e mês
+   (e mesma parcela): igual → pula; mesmo item com outro valor → corrige
+   o valor; mesmo valor com nome diferente → você decide. Nada grava sem
+   o botão Salvar. */
+function acharCartaoNome(txt){
+  const n=normTxt(txt).trim();
+  if(/^(sem cartao|pix|dinheiro|debito|boleto|conta)$/.test(n))return 'Sem cartão';
+  const c=S.cartoes.find(x=>normTxt(x.nome)===n)||S.cartoes.find(x=>n.includes(normTxt(x.nome))||normTxt(x.nome).includes(n));
+  return c?c.nome:null;
+}
+function acharCategoriaNome(txt){
+  const n=normTxt(txt).trim();if(!n)return null;
+  const c=S.categorias.find(x=>normTxt(x.nome)===n)
+    ||S.categorias.find(x=>normTxt(x.nome).startsWith(n)||n.startsWith(normTxt(x.nome)));
+  return c?c.nome:null;
+}
+function acharPessoaNome(txt){
+  const n=normTxt(txt).trim();if(!n)return null;
+  if(['eu','eu mesmo','meu','minha'].includes(n))return pessoaPrincipal;
+  const p=S.pessoas.find(x=>normTxt(x.nome)===n)||S.pessoas.find(x=>normTxt(primeiroNome(x.nome))===n.split(' ')[0]);
+  return p?p.nome:null;
+}
+/* "Mesa e sofá" ~ "MESA E SOFA LTDA" ~ "Mesa sofa": palavras com 3+ letras em comum */
+function nomesParecidos(a,b){
+  const ta=chaveDesc(a).split(' ').filter(w=>w.length>=3), tb=chaveDesc(b).split(' ').filter(w=>w.length>=3);
+  if(!ta.length||!tb.length)return chaveDesc(a)===chaveDesc(b);
+  const comuns=ta.filter(w=>tb.some(x=>x===w||(w.length>=5&&x.length>=5&&(x.startsWith(w)||w.startsWith(x))))).length;
+  return comuns>=Math.min(2,ta.length,tb.length);
+}
+function lerImportacao(texto){
+  const itens=[],avisos=[];let cartao=null,mes=null;
+  String(texto||'').split(/\r?\n/).forEach((bruta,num)=>{
+    const ln=bruta.trim();
+    if(!ln||ln.startsWith('```'))return;
+    const h=ln.match(/^#\s*FATURA\s+(.+?)\s+(\d{4})-(\d{1,2})\s*$/i);
+    if(h){
+      cartao=acharCartaoNome(h[1]);mes=`${h[2]}-${pad2(+h[3])}`;
+      if(!cartao)avisos.push(`Linha ${num+1}: cartão "${h[1]}" não está cadastrado.`);
+      return;
+    }
+    if(ln.startsWith('#'))return;
+    if(!mes||!cartao){avisos.push(`Linha ${num+1}: falta a linha "#FATURA cartão AAAA-MM" antes dos itens.`);return;}
+    let it;
+    if(ln.includes('|')){
+      const [d,v,c,pp,parc]=ln.split('|').map(x=>(x||'').trim());
+      const valor=parseValor(v);
+      const pessoas=(pp||'').split('+').map(acharPessoaNome).filter(Boolean);
+      const m=(parc||'').match(/^(\d{1,2})\s*\/\s*(\d{1,2})$/);
+      it={desc:d,valor,categoria:acharCategoriaNome(c),catTexto:c,pessoas:[...new Set(pessoas)],
+        parcelaAtual:m?+m[1]:1,parcelas:m?+m[2]:1};
+      if(pp&&!pessoas.length)avisos.push(`Linha ${num+1}: pessoa "${pp}" não cadastrada — ficou como sua.`);
+    }else{
+      const r=interpretarFrase(ln);
+      it={desc:r.desc,valor:r.valor,categoria:r.categoria,catTexto:'',pessoas:r.divisao||[r.responsavel].filter(Boolean),
+        parcelaAtual:1,parcelas:r.parcelas||1};
+    }
+    if(!it.desc||!(it.valor>0)){avisos.push(`Linha ${num+1}: não entendi "${ln}".`);return;}
+    if(!it.pessoas.length)it.pessoas=[pessoaPrincipal||(S.pessoas[0]&&S.pessoas[0].nome)].filter(Boolean);
+    if(it.parcelas<1||it.parcelaAtual<1||it.parcelaAtual>it.parcelas){it.parcelas=1;it.parcelaAtual=1;}
+    it.desc=it.desc.charAt(0).toUpperCase()+it.desc.slice(1);
+    it.cartao=cartao;it.mesChave=mes;it.linha=num+1;
+    itens.push(it);
+  });
+  classificarImportacao(itens);
+  return{itens,avisos};
+}
+/* compara com o que já existe; cada lançamento existente só "casa" uma vez */
+function classificarImportacao(itens){
+  const usados=new Set();
+  itens.forEach(it=>{
+    const mesmos=S.lancamentos.filter(l=>!usados.has(l.id)&&l.cartao===it.cartao&&l.mesChave===it.mesChave&&
+      (it.parcelas>1?(l.parcelas===it.parcelas&&l.parcelaAtual===it.parcelaAtual):l.parcelas<=1));
+    // uma compra dividida existe como várias linhas "(Div.)": junta pelo nome
+    const grupos={};
+    mesmos.forEach(l=>{const k=chaveDesc(semDiv(l.desc))+'|'+(ehDividido(l)?'div':l.id);(grupos[k]=grupos[k]||[]).push(l);});
+    const lista=Object.values(grupos).map(g=>({itens:g,desc:semDiv(g[0].desc),total:r2(somaValores(g))}));
+    const porNome=lista.filter(g=>nomesParecidos(it.desc,g.desc));
+    const igual=porNome.find(g=>Math.abs(g.total-it.valor)<0.01);
+    const outroValor=porNome.find(g=>Math.abs(g.total-it.valor)>=0.01);
+    const mesmoValor=lista.find(g=>!porNome.includes(g)&&Math.abs(g.total-it.valor)<0.01);
+    const marca=g=>g.itens.forEach(l=>usados.add(l.id));
+    if(igual){it.status='igual';it.alvo=igual;marca(igual);it.incluir=false;}
+    else if(outroValor){it.status='corrigir';it.alvo=outroValor;marca(outroValor);it.incluir=true;}
+    else if(mesmoValor){it.status='duvida';it.alvo=mesmoValor;marca(mesmoValor);it.incluir=false;it.ehOutro=false;}
+    else{it.status='novo';it.incluir=!!it.categoria;}
+  });
+}
+let importacao=null;
+function lerImportacaoUI(){
+  const txt=$('imp-texto').value;
+  if(!txt.trim()){setHtml($('imp-resultado'),'');importacao=null;atualizarBotaoImportar();return;}
+  importacao=lerImportacao(txt);
+  renderImportacao();
+}
+function renderImportacao(){
+  const el=$('imp-resultado');
+  if(!importacao){setHtml(el,'');return;}
+  const {itens,avisos}=importacao;
+  const cont={novo:0,igual:0,corrigir:0,duvida:0};itens.forEach(i=>cont[i.status]++);
+  const catOpts=sel=>S.categorias.map(c=>`<option${c.nome===sel?' selected':''}>${esc(c.nome)}</option>`).join('');
+  const fatura=[...new Set(itens.map(i=>`${i.cartao} · ${chaveExib(i.mesChave)}`))].join(' / ');
+  const linhas=itens.map((it,i)=>{
+    const parc=it.parcelas>1?` <span class="tag">${pad2(it.parcelaAtual)}/${pad2(it.parcelas)}</span>`:'';
+    const quem=it.pessoas.map(primeiroNome).join(' + ');
+    let st='';
+    if(it.status==='novo')st=`<span class="imp-st novo">Novo</span>${it.parcelas>1&&it.parcelaAtual<it.parcelas?` <span class="imp-obs">cria até ${pad2(it.parcelas)}/${pad2(it.parcelas)}</span>`:''}`;
+    if(it.status==='igual')st=`<span class="imp-st igual">✓ Já lançado</span>`;
+    if(it.status==='corrigir')st=`<span class="imp-st corrigir">Corrigir valor</span> <span class="imp-obs">${fmt(it.alvo.total)} → ${fmt(it.valor)}</span>`;
+    if(it.status==='duvida')st=`<span class="imp-st duvida">Parece "${esc(it.alvo.desc)}"</span>
+      <span class="imp-escolha"><button class="${it.ehOutro?'':'on'}" data-imp="mesmo" data-i="${i}">É o mesmo</button><button class="${it.ehOutro?'on':''}" data-imp="outro" data-i="${i}">É outro</button></span>`;
+    const podeMarcar=it.status==='novo'||it.status==='corrigir';
+    return `<div class="imp-linha ${it.status}${it.incluir?'':' fora'}">
+      ${podeMarcar?`<input type="checkbox" class="imp-check" data-i="${i}" ${it.incluir?'checked':''} aria-label="Incluir ${esc(it.desc)}">`:'<span class="imp-check-vazio"></span>'}
+      <div class="imp-info">
+        <div class="imp-desc"><span class="ico-inline" aria-hidden="true">${iconeCategoria(it.categoria||'')}</span>${esc(it.desc)}${parc}</div>
+        <div class="imp-meta">
+          ${it.status==='novo'?`<select class="imp-cat${it.categoria?'':' falta'}" data-i="${i}" aria-label="Categoria">${it.categoria?'':'<option value="" selected disabled>escolha a categoria</option>'}${catOpts(it.categoria)}</select>`:esc(it.categoria||it.catTexto||'')}
+          · ${esc(quem)}${it.pessoas.length>1?' (dividido)':''}
+        </div>
+        <div class="imp-status">${st}</div>
+      </div>
+      <div class="imp-valor">${fmt(it.valor)}</div>
+    </div>`;
+  }).join('');
+  setHtml(el,(itens.length?`<div class="imp-cab"><b>${esc(fatura)}</b><span>${cont.novo} novo(s) · ${cont.igual} já lançado(s) · ${cont.corrigir} a corrigir${cont.duvida?` · ${cont.duvida} para decidir`:''}</span></div>`:'')+
+    (avisos.length?`<div class="imp-avisos">${avisos.map(a=>`<div>⚠ ${esc(a)}</div>`).join('')}</div>`:'')+
+    `<div class="imp-lista">${linhas}</div>`);
+  atualizarBotaoImportar();
+}
+function atualizarBotaoImportar(){
+  const b=$('imp-salvar');if(!b)return;
+  const sel=importacao?importacao.itens.filter(i=>i.incluir&&(i.status!=='novo'||i.categoria)):[];
+  const nov=sel.filter(i=>i.status==='novo'||(i.status==='duvida'&&i.ehOutro)).length, cor=sel.filter(i=>i.status==='corrigir').length;
+  b.disabled=!sel.length;
+  b.textContent=sel.length?`Salvar: ${nov} novo(s)${cor?` e ${cor} correção(ões)`:''}`:'Salvar importação';
+}
+function salvarImportacao(){
+  if(!importacao)return;
+  const sel=importacao.itens.filter(i=>i.incluir&&(i.status!=='novo'||i.categoria));
+  const novos=[],correcoes=[];
+  sel.forEach(it=>{
+    if(it.status==='corrigir'){
+      // mantém a divisão: o novo valor é repartido entre as mesmas pessoas
+      const g=it.alvo.itens, cotas=dividirValor(it.valor,g.length);
+      g.forEach((l,k)=>correcoes.push([l,{...l,valor:cotas[k]}]));
+      return;
+    }
+    const [ano,mes]=it.mesChave.split('-').map(Number);
+    const op={n:it.parcelas,p0:it.parcelaAtual,incluirPagas:false};
+    const base=uid().slice(0,8).toUpperCase();
+    const div=it.pessoas.length>1, cotas=dividirValor(it.valor,it.pessoas.length);
+    it.pessoas.forEach((pessoa,k)=>{
+      const valores=Array.from({length:it.parcelas},()=>cotas[k]);
+      novos.push(...gerarParcelas(div?it.desc+' (Div.)':it.desc,mes,ano,valores,pessoa,it.cartao,it.categoria,op,div?`${base}-${k+1}`:base)
+        .map(l=>({...l,pago:false,pagoEm:''})));
+    });
+  });
+  if(!novos.length&&!correcoes.length)return;
+  versaoLocal++;
+  S.lancamentos.push(...novos);
+  correcoes.forEach(([l,n])=>Object.assign(l,n));
+  salvarCache();
+  if(novos.length)enfileirar('addLancamentos',{itens:novos.map(paraAPI)});
+  correcoes.forEach(([,n])=>enfileirar('updateLancamento',{item:paraAPI(n)}));
+  render();processarFila();
+  const qtdNovos=sel.filter(i=>i.status!=='corrigir').length;
+  toast(`Importado: ${qtdNovos} compra(s) nova(s)${correcoes.length?`, ${sel.filter(i=>i.status==='corrigir').length} valor(es) corrigido(s)`:''}`,'success');
+  $('imp-texto').value='';importacao=null;renderImportacao();
+}
+async function colarImportacao(){
+  try{const t=await navigator.clipboard.readText();if(t){$('imp-texto').value=t;lerImportacaoUI();return;}}catch(e){}
+  $('imp-texto').focus();toast('Toque e segure no campo e escolha "Colar"','info');
+}
+/* Compartilhado de outro app (Android): o texto chega pela URL */
+function receberCompartilhado(){
+  let t=null;try{t=sessionStorage.getItem('cf_import');}catch(e){}
+  if(!t)return;
+  try{sessionStorage.removeItem('cf_import');}catch(e){}
+  mudarPagina('lancar');
+  const box=$('imp-box');if(box)box.open=true;
+  $('imp-texto').value=t;lerImportacaoUI();
+  box&&box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 /* ═══════════════ EXTRATO ═══════════════ */
 function chipParcela(a,t){return t===1?'<span class="chip avista">À vista</span>':`<span class="chip parc">${pad2(a)}/${pad2(t)}</span>`;}
 function idsPendentes(){
@@ -3893,6 +4136,7 @@ function descartarDadosLocais(){
   sstore.del(K.preparo);
 }
 function abrirApp(){
+  setTimeout(receberCompartilhado,0);
   $('auth-screen').classList.add('hidden');
   $('app').style.display='block';
   appAberto=true;
@@ -3944,7 +4188,8 @@ function renderLeitura(){
   fetch('manifest.json').then(r=>r.ok?r.json():Promise.reject()).then(m=>{
     const manifest={...m,id:base,scope:base,
       start_url:base+'index.html'+(token?`?token=${encodeURIComponent(token)}`:''),
-      icons:(m.icons||[]).map(i=>({...i,src:new URL(i.src,base).href}))};
+      icons:(m.icons||[]).map(i=>({...i,src:new URL(i.src,base).href})),
+      ...(m.share_target?{share_target:{...m.share_target,action:base+'index.html'}}:{})};
     const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
     const novo=document.createElement('link');
     novo.id='manifest-link';novo.rel='manifest';novo.href=URL.createObjectURL(blob);
@@ -4092,6 +4337,24 @@ on('frase','input',renderPreviaFrase);
 on('frase','keydown',e=>{if(e.key==='Enter'){e.preventDefault();adicionarFrase();}});
 on('btn-frase-add','click',adicionarFrase);
 on('btn-frase-ajustar','click',ajustarFrase);
+on('imp-ler','click',lerImportacaoUI);
+on('imp-colar','click',colarImportacao);
+on('imp-salvar','click',salvarImportacao);
+on('imp-texto','input',()=>{clearTimeout(window.__impT);window.__impT=setTimeout(lerImportacaoUI,350);});
+on('imp-resultado','change',e=>{
+  const i=+e.target.dataset.i;if(!importacao||isNaN(i))return;const it=importacao.itens[i];
+  if(e.target.classList.contains('imp-check'))it.incluir=e.target.checked;
+  if(e.target.classList.contains('imp-cat')){it.categoria=e.target.value;it.incluir=true;}
+  renderImportacao();
+});
+on('imp-resultado','click',e=>{
+  const b=e.target.closest('[data-imp]');if(!b||!importacao)return;
+  const it=importacao.itens[+b.dataset.i];
+  it.ehOutro=b.dataset.imp==='outro';
+  // "é outro" vira compra nova; "é o mesmo" fica de fora
+  if(it.ehOutro){it.status='novo';it.alvo=null;it.incluir=!!it.categoria;}
+  renderImportacao();
+});
 on('fab','click',()=>{mudarPagina('lancar');setTimeout(()=>{const f=$('frase');if(f)f.focus();},60);});
 on('btn-salvar-tudo','click',salvarTudo);
 on('btn-limpar-conferencia','click',()=>{
@@ -4185,6 +4448,11 @@ window.addEventListener('storage',e=>{
 
 (async()=>{
   aplicarTema();
+  // Compartilhar → Financeiro (Android): o texto chega como ?text=... na URL
+  (function(){
+    const q=new URLSearchParams(location.search), t=[q.get('title'),q.get('text'),q.get('url')].filter(Boolean).join('\n');
+    if(t&&!q.get('token')){try{sessionStorage.setItem('cf_import',t);}catch(e){}history.replaceState(null,'',location.pathname);}
+  })();
   store.del('cf_senha'); // a versão anterior guardava a senha em texto puro
 
   const token=new URLSearchParams(location.search).get('token');
