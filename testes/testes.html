@@ -169,6 +169,11 @@ document.getElementById('app').addEventListener('load',()=>{
       {id:'pf1',desc:'Perfume',mesChave:'2027-01',valor:24.99,responsavel:'Cindhy Medeiros',cartao:'Hipercard',categoria:'Lanches',parcelas:12,parcelaAtual:12,grupoId:'pf',pago:false});`);
     confere('importar: soma de lançamentos com o mesmo nome = já lançado', no(`lerImportacao('#FATURA Hipercard 2027-01\\nEBW*Spotify | 40,90 | Lanches').itens[0].status`), 'igual');
     confere('importar: mesma parcela e valor, outro nome = já lançado', no(`(()=>{const i=lerImportacao('#FATURA Hipercard 2027-01\\nBah Free Shop | 11,65 | Lanches | Cindhy | 12/12').itens[0];return [i.status,i.alvo.desc]})()`), ['igual','Boné']);
+    no(`for(let k=1;k<=12;k++)S.lancamentos.push({id:'fo'+k,desc:'Fone',mesChave:chaveDesloc('2026-11',k-3),valor:29.88,responsavel:'Cintia Muniz',cartao:'Hipercard',categoria:'Eletrônicos',parcelas:12,parcelaAtual:k,grupoId:'fo',pago:false});
+      window.__fo=lerImportacao('#FATURA Hipercard 2026-11\\nCarrefour Com | 29,88 | Supermercados | Fernando | 03/10');`);
+    confere('importar: parcela com outro total = dúvida que acerta o total', no(`[__fo.itens[0].status,__fo.itens[0].alvo.desc,__fo.itens[0].ajustaN]`), ['duvida','Fone',true]);
+    no(`outbox=[];importacao=__fo;salvarImportacao();`);
+    confere('importar: "é o mesmo" deixa a compra com 10 parcelas', no(`S.lancamentos.filter(l=>l.grupoId==='fo').map(l=>l.parcelaAtual+'/'+l.parcelas).join(' ')`), '1/10 2/10 3/10 4/10 5/10 6/10 7/10 8/10 9/10 10/10');
 
     // CSV da fatura do Nubank
     no(`

@@ -3199,7 +3199,7 @@ function classificarImportacao(itens){
     it.incluir=status==='corrigir';
     if(status==='duvida')it.ehOutro=false;
   };
-  itens.forEach(it=>{it.status=null;it.alvo=null;it.outroNome=false;});
+  itens.forEach(it=>{it.status=null;it.alvo=null;it.outroNome=false;it.ajustaN=false;});
   // 1) nome e valor iguais
   itens.forEach(it=>{
     const g=candidatos(it).find(g=>nomesParecidos(it.desc,g.desc)&&quase(g.total,it.valor));
@@ -3223,7 +3223,14 @@ function classificarImportacao(itens){
     // 5) mesmo valor, nome diferente (mesmo cartão e mês, qualquer parcela)
     const mesmoValor=lista.find(g=>quase(g.total,it.valor))||
       gruposDe(S.lancamentos.filter(l=>!usados.has(l.id)&&l.cartao===it.cartao&&l.mesChave===it.mesChave)).find(g=>quase(g.total,it.valor));
-    if(mesmoValor){define(it,'duvida',mesmoValor);return;}
+    if(mesmoValor){
+      define(it,'duvida',mesmoValor);
+      // mesma parcela atual, total diferente (3/12 no app, 3/10 no banco):
+      // "É o mesmo" acerta o total de parcelas pelo banco
+      const l0=mesmoValor.itens[0];
+      if(it.parcelas>1&&l0.parcelas>1&&l0.parcelaAtual===it.parcelaAtual&&l0.parcelas!==it.parcelas){it.ajustaN=true;it.incluir=true;}
+      return;
+    }
     it.status='novo';it.incluir=!!it.categoria;
   });
 }
@@ -3257,7 +3264,7 @@ function renderImportacao(){
     if(it.status==='igual')st=`<span class="imp-st igual">✓ Já lançado</span>${comoNome}`;
     if(it.status==='corrigir')st=`<span class="imp-st corrigir">Corrigir valor</span> <span class="imp-obs">${fmt(it.alvo.total)} → ${fmt(it.valor)}</span>${comoNome}`;
     if(it.status==='duvida')st=`<span class="imp-st duvida">Parece "${esc(it.alvo.desc)}"</span>
-      <span class="imp-escolha"><button class="${it.ehOutro?'':'on'}" data-imp="mesmo" data-i="${i}">É o mesmo</button><button class="${it.ehOutro?'on':''}" data-imp="outro" data-i="${i}">É outro</button></span>`;
+      <span class="imp-escolha"><button class="${it.ehOutro?'':'on'}" data-imp="mesmo" data-i="${i}">É o mesmo</button><button class="${it.ehOutro?'on':''}" data-imp="outro" data-i="${i}">É outro</button></span>${it.ajustaN?`<span class="imp-obs">é o mesmo → passa de ${pad2(it.alvo.itens[0].parcelas)} para ${pad2(it.parcelas)} parcelas</span>`:''}`;
     const podeMarcar=it.status==='novo'||it.status==='corrigir';
     return `<div class="imp-linha ${it.status}${it.incluir?'':' fora'}">
       ${podeMarcar?`<input type="checkbox" class="imp-check" data-i="${i}" ${it.incluir?'checked':''} aria-label="Incluir ${esc(it.desc)}">`:'<span class="imp-check-vazio"></span>'}
@@ -3280,15 +3287,31 @@ function renderImportacao(){
 function atualizarBotaoImportar(){
   const b=$('imp-salvar');if(!b)return;
   const sel=importacao?importacao.itens.filter(i=>i.incluir&&(i.status!=='novo'||i.categoria)):[];
-  const nov=sel.filter(i=>i.status==='novo'||(i.status==='duvida'&&i.ehOutro)).length, cor=sel.filter(i=>i.status==='corrigir').length;
+  const nov=sel.filter(i=>i.status==='novo').length, cor=sel.filter(i=>i.status==='corrigir'||i.status==='duvida').length;
   b.disabled=!sel.length;
-  b.textContent=sel.length?`Salvar: ${nov} novo(s)${cor?` e ${cor} correção(ões)`:''}`:'Salvar importação';
+  b.textContent=sel.length?(nov?`Salvar: ${nov} novo(s)${cor?` e ${cor} correção(ões)`:''}`:`Salvar: ${cor} correção(ões)`):'Salvar importação';
 }
 function salvarImportacao(){
   if(!importacao)return;
   const sel=importacao.itens.filter(i=>i.incluir&&(i.status!=='novo'||i.categoria));
-  const novos=[],correcoes=[];
+  const novos=[],correcoes=[],apagar=[];
   sel.forEach(it=>{
+    if(it.status==='duvida'){
+      if(!it.ajustaN||it.ehOutro)return;
+      // a compra é a mesma: vale o total de parcelas do banco
+      const N=it.parcelas;
+      it.alvo.itens.forEach(l=>{
+        const grupo=S.lancamentos.filter(x=>x.grupoId===l.grupoId&&x.responsavel===l.responsavel);
+        grupo.forEach(x=>{
+          if(x.parcelaAtual>N)apagar.push(x.id);
+          else correcoes.push([x,{...x,parcelas:N}]);
+        });
+        const ultima=grupo.reduce((u,x)=>x.parcelaAtual>u.parcelaAtual?x:u,grupo[0]);
+        for(let k=ultima.parcelaAtual+1;k<=N;k++)
+          novos.push({...ultima,id:uid(),parcelas:N,parcelaAtual:k,mesChave:chaveDesloc(ultima.mesChave,k-ultima.parcelaAtual),pago:false,pagoEm:''});
+      });
+      return;
+    }
     if(it.status==='corrigir'){
       // mantém a divisão: o novo valor é repartido entre as mesmas pessoas
       const g=it.alvo.itens, cotas=dividirValor(it.valor,g.length);
@@ -3305,16 +3328,19 @@ function salvarImportacao(){
         .map(l=>({...l,pago:false,pagoEm:''})));
     });
   });
-  if(!novos.length&&!correcoes.length)return;
+  if(!novos.length&&!correcoes.length&&!apagar.length)return;
   versaoLocal++;
+  const sai=new Set(apagar);
+  S.lancamentos=S.lancamentos.filter(l=>!sai.has(l.id));
   S.lancamentos.push(...novos);
   correcoes.forEach(([l,n])=>Object.assign(l,n));
   salvarCache();
   if(novos.length)enfileirar('addLancamentos',{itens:novos.map(paraAPI)});
   correcoes.forEach(([,n])=>enfileirar('updateLancamento',{item:paraAPI(n)}));
+  if(apagar.length)enfileirar('deleteLancamentos',{ids:apagar});
   render();processarFila();
-  const qtdNovos=sel.filter(i=>i.status!=='corrigir').length;
-  toast(`Importado: ${qtdNovos} compra(s) nova(s)${correcoes.length?`, ${sel.filter(i=>i.status==='corrigir').length} valor(es) corrigido(s)`:''}`,'success');
+  const qtdNovos=sel.filter(i=>i.status==='novo').length, qtdCor=sel.filter(i=>i.status==='corrigir').length, qtdAj=sel.filter(i=>i.status==='duvida').length;
+  toast(`Importado: ${qtdNovos} compra(s) nova(s)${qtdCor?`, ${qtdCor} valor(es) corrigido(s)`:''}${qtdAj?`, ${qtdAj} parcelamento(s) acertado(s)`:''}`,'success');
   $('imp-texto').value='';importacao=null;renderImportacao();
 }
 async function colarImportacao(){
