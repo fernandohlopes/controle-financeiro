@@ -35,7 +35,7 @@
      (#161616): faixa de luminosidade, separação para daltonismo e
      contraste. O dourado da marca (#c9a84c) é claro demais para série;
      a série usa um passo abaixo. Texto nunca usa estas cores. */
-  --s-gasto:#b08d34;--s-receita:#3987e5;--s-outros:#6b6b6b;
+  --s-gasto:#b08d34;--s-receita:#3987e5;--s-outros:#6b6b6b;--s-fixa:#e0cb8f;
   --st-bom:#0ca30c;--st-alerta:#fab219;--st-critico:#d03b3b;
   --grade:#262626;--eixo:#3a3a3a;--trilho:#232323;--spark:#4a4a4a;
   --text:#e8e8e8;
@@ -588,6 +588,31 @@ details.filtros-box[open]>summary::after{content:'−'}
 .imp-meta{font-size:.76rem;color:var(--text3);margin-top:2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .imp-cat{font:inherit;font-size:.76rem;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;max-width:170px}
 .imp-cat.falta{border-color:var(--amber);color:var(--amber)}
+[hidden]{display:none!important}
+.adi-linha{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+@media(max-width:480px){.adi-linha{grid-template-columns:1fr 1fr}.adi-linha label:last-child{grid-column:1/-1}}
+.adi-linha label{display:flex;flex-direction:column;gap:4px;font-size:.72rem;color:var(--text3)}
+.pag-resto{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:12px 0 4px;font-size:.82rem;color:var(--text2)}
+.pag-resto span{width:100%;font-size:.74rem;color:var(--text3)}
+.pag-resto label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.card-emp>summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}
+.card-emp>summary::-webkit-details-marker{display:none}
+.card-emp[open]>summary{margin-bottom:12px}
+.emp-item{flex-wrap:wrap}
+.emp-hist{width:100%;margin-top:8px;border-top:1px solid var(--border);padding-top:6px}
+.emp-mov{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;font-size:.8rem;padding:3px 0}
+.emp-data{color:var(--text3);font-variant-numeric:tabular-nums}
+.emp-desc{color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.emp-mov b{font-variant-numeric:tabular-nums}.emp-mov b.ok{color:var(--green)}
+.fechar-barra{height:6px;border-radius:3px;background:var(--card2);overflow:hidden;margin:2px 0 12px}
+.fechar-barra i{display:block;height:100%;background:var(--green);border-radius:3px}
+.fechar-passo{display:flex;gap:10px;align-items:baseline;padding:5px 0;font-size:.86rem;color:var(--text)}
+.fechar-passo small{display:block;color:var(--text3);font-size:.74rem}
+.fechar-marca{width:16px;text-align:center;color:var(--text3)}
+.fechar-passo.ok{color:var(--text3)}.fechar-passo.ok .fechar-marca{color:var(--green)}
+.termina-tit{font-size:.74rem;color:var(--text3);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.imp-fixa{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text2);margin-top:4px;width:100%}
+.imp-fixas-falta{font-size:.78rem;color:var(--text2);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0}
 .imp-pes{font:inherit;font-size:.76rem;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;max-width:150px}
 .imp-status{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.72rem}
 .imp-st{font-weight:600;padding:2px 7px;border-radius:5px}
@@ -775,7 +800,7 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
   --gold:#9a7a26;--gold2:#7d6218;--gold-dim:rgba(154,122,38,.10);
   --green:#0b7a35;--green-dim:rgba(11,122,53,.08);--red:#c0362c;--red-dim:rgba(192,54,44,.08);--amber:#9a6200;
   --text:#191917;--text2:#46453f;--text3:#6f6d66;--muted:#86837b;
-  --s-gasto:#b08d34;--s-receita:#2a78d6;--s-outros:#8f8d86;--grade:#eceae3;--eixo:#d3cfc4;
+  --s-gasto:#b08d34;--s-receita:#2a78d6;--s-outros:#8f8d86;--s-fixa:#dcc98f;--grade:#eceae3;--eixo:#d3cfc4;
   --trilho:#ecebe5;--spark:#c4c2ba;}
 :root[data-theme="light"] body{background:var(--bg)}
 :root[data-theme="light"] .topbar{background:rgba(255,255,255,.92)}
@@ -808,7 +833,7 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
   --gold:#9a7a26;--gold2:#7d6218;--gold-dim:rgba(154,122,38,.10);
   --green:#0b7a35;--green-dim:rgba(11,122,53,.08);--red:#c0362c;--red-dim:rgba(192,54,44,.08);--amber:#9a6200;
   --text:#191917;--text2:#46453f;--text3:#6f6d66;--muted:#86837b;
-  --s-gasto:#b08d34;--s-receita:#2a78d6;--s-outros:#8f8d86;--grade:#eceae3;--eixo:#d3cfc4;
+  --s-gasto:#b08d34;--s-receita:#2a78d6;--s-outros:#8f8d86;--s-fixa:#dcc98f;--grade:#eceae3;--eixo:#d3cfc4;
   --trilho:#ecebe5;--spark:#c4c2ba;}
 :root[data-theme="auto"] body{background:var(--bg)}
 :root[data-theme="auto"] .topbar{background:rgba(255,255,255,.92)}
@@ -1014,6 +1039,16 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
       <div class="settings-list" id="lista-acerto"></div>
     </div>
 
+    <details class="card span-6 card-emp" id="card-emp">
+      <summary><span class="card-label" style="margin:0">🔒 Empréstimos</span><span class="card-dica">só você vê · toque para abrir</span></summary>
+      <div id="emp-corpo"></div>
+    </details>
+
+    <div class="card span-6" id="card-fechar">
+      <div class="card-label" id="fechar-titulo">Fechar o mês</div>
+      <div id="fechar-corpo"></div>
+    </div>
+
     <div class="card span-6">
       <div class="card-label">Orçamento por categoria <span class="card-dica">todas as pessoas</span></div>
       <div class="chart-wrap" id="chart-orcamento"></div>
@@ -1030,9 +1065,13 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
     </div>
 
     <div class="card span-6">
-      <div class="card-label">Próximos meses — parcelas já feitas</div>
+      <div class="card-head">
+        <div class="card-label">Próximos meses — já comprometido</div>
+        <div class="legenda" aria-hidden="true"><span><i class="sw" style="background:var(--s-gasto)"></i>Parcelas</span><span><i class="sw" style="background:var(--s-fixa)"></i>Fixas</span></div>
+      </div>
       <div class="grafico" id="chart-futuro"></div>
       <div class="nota" id="nota-futuro"></div>
+      <div class="settings-list" id="lista-termina"></div>
     </div>
 
     <div class="card span-6">
@@ -1352,9 +1391,38 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
       <input type="text" id="pag-valor" class="inp" placeholder="0,00" inputmode="decimal" autocomplete="off" data-dinheiro aria-label="Valor pago agora">
       <button class="btn btn-primary" id="pag-parcial">Parcial</button>
     </div>
+    <div class="pag-resto" id="pag-resto" hidden>
+      <span>O que faltar:</span>
+      <label><input type="radio" name="pag-resto" value="levar" checked> Passa para o mês seguinte</label>
+      <label><input type="radio" name="pag-resto" value="perdoar"> Não cobrar</label>
+    </div>
     <div class="auth-err" id="pag-erro" role="alert"></div>
     <div class="field-hint" id="pag-dica"></div>
     <button class="btn btn-ghost btn-full" id="pag-cancelar" style="margin-top:14px">Cancelar</button>
+  </div>
+</div>
+
+<div id="modal-emp" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="emp-titulo">
+  <div class="modal-box">
+    <div class="modal-title" id="emp-titulo">Empréstimo</div>
+    <div class="modal-sub" id="emp-sub">Só você vê</div>
+    <div class="modal-field"><label for="emp-pessoa">Pessoa</label><select id="emp-pessoa" class="inp"></select></div>
+    <div class="modal-field"><label for="emp-valor">Valor (R$)</label><input type="text" id="emp-valor" class="inp" placeholder="0,00" inputmode="decimal" autocomplete="off" data-dinheiro></div>
+    <div class="modal-field" id="emp-data-box"><label for="emp-data">Data</label><input type="date" id="emp-data" class="inp"></div>
+    <div class="modal-field"><label for="emp-desc">Descrição</label><input type="text" id="emp-desc" class="inp" maxlength="80" autocomplete="off"></div>
+    <div id="emp-cobrar" hidden>
+      <div class="field-hint" style="margin-bottom:10px">Vira lançamento no nome da pessoa (sem cartão): entra no acerto do mês e ela vê no link dela. O saldo do empréstimo baixa no mesmo valor.</div>
+      <div class="mes-ano-row">
+        <div class="modal-field"><label for="emp-parcelas">Parcelas</label><input type="number" id="emp-parcelas" class="inp" min="1" max="60" value="1" inputmode="numeric"></div>
+        <div class="modal-field"><label for="emp-mes">A partir de</label><select id="emp-mes" class="inp"></select></div>
+      </div>
+      <div class="modal-field"><label for="emp-cat">Categoria</label><select id="emp-cat" class="inp"></select></div>
+    </div>
+    <div class="auth-err" id="emp-erro" role="alert"></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" id="emp-salvar">Salvar</button>
+      <button class="btn btn-ghost" style="flex:1" id="emp-cancelar">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -1435,7 +1503,7 @@ const K={sessao:'cf_sessao',usuario:'cf_usuario',manter:'cf_manter',principal:'c
   filtroPessoa:'cf_filtro_pessoa'};
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-const S={lancamentos:[],receitas:{},pessoas:[],categorias:[],cartoes:[],recorrentes:[],acertos:[],atualizadoEm:null};
+const S={lancamentos:[],receitas:{},pessoas:[],categorias:[],cartoes:[],recorrentes:[],acertos:[],emprestimos:[],servidorV:1,atualizadoEm:null};
 let SESSAO=null,outbox=[],itensPreparo=[],pessoaPrincipal=null;
 let paginaAtiva='resumo',editandoId=null,editandoRecId=null,filtroMesUsuario=null;
 const PREFIXO_REC='REC-'; // grupo_id dos lançamentos gerados por cobrança fixa
@@ -1556,6 +1624,7 @@ function carregarCache(){
     S.lancamentos=d.lancamentos||[];S.receitas=d.receitas||{};
     S.pessoas=d.pessoas||[];S.categorias=d.categorias||[];S.cartoes=d.cartoes||[];
     S.recorrentes=d.recorrentes||[];S.acertos=d.acertos||[];
+    S.emprestimos=d.emprestimos||[];S.servidorV=d.servidorV||1;
     S.atualizadoEm=d.atualizadoEm||null;
     return !!(S.lancamentos.length||S.pessoas.length||S.categorias.length||S.cartoes.length);
   }catch(e){return false;}
@@ -1752,7 +1821,10 @@ function aplicarDados(data){
   (data.receitas||[]).forEach(r=>{const k=normalizarMesChave(r.mes);if(k)S.receitas[k]=Number(r.valor)||0;});
   S.pessoas=data.pessoas||[];S.categorias=data.categorias||[];S.cartoes=data.cartoes||[];
   S.recorrentes=(data.recorrentes||[]).map(mapRecFromAPI);
-  S.acertos=(data.acertos||[]).map(a=>({mes:normalizarMesChave(a.mes),pessoa:String(a.pessoa||''),valor:Number(a.valor)||0,recebidoEm:String(a.recebido_em||'').slice(0,10)}));
+  S.acertos=(data.acertos||[]).map(a=>({mes:normalizarMesChave(a.mes),pessoa:String(a.pessoa||''),valor:Number(a.valor)||0,recebidoEm:String(a.recebido_em||'').slice(0,10),perdoado:Number(a.perdoado)||0}));
+  // Code.gs novo devolve "emprestimos" (mesmo vazio): só então empréstimos e "não cobrar" gravam
+  S.servidorV=Array.isArray(data.emprestimos)?2:1;
+  S.emprestimos=(data.emprestimos||[]).map(empDaAPI);
   S.atualizadoEm=Date.now();
   if(data.usuario&&SESSAO&&SESSAO.usuario!==data.usuario){SESSAO.usuario=data.usuario;salvarSessao(SESSAO);}
   carregarPessoaPrincipal();salvarCache();render();
@@ -1982,6 +2054,8 @@ function renderResumo(){
 
   renderPagar(A);
   renderAcerto(chave);
+  renderEmprestimos();
+  renderFechamento(chave);
 
   // ── onde está gastando mais (cada linha abre o extrato daquela categoria)
   const cats=Object.entries(F.porCat).sort((a,b)=>b[1]-a[1]);
@@ -2213,19 +2287,19 @@ function contaPessoa(pessoa,chave){
   if(!meses.length)return null;
   let k=meses[0],saldo=0,guarda=0;
   while(k<chave&&guarda++<240){
-    saldo=r2(saldo+somaValores(doMes[k]||[])-(recs[k]?recs[k].valor:0));
+    saldo=r2(saldo+somaValores(doMes[k]||[])-(recs[k]?recs[k].valor+(recs[k].perdoado||0):0));
     k=chaveDesloc(k,1);
   }
   const itens=doMes[chave]||[], gasto=r2(somaValores(itens)), anterior=saldo, devido=r2(gasto+anterior);
-  const reg=recs[chave]||null, recebido=reg?r2(reg.valor):0, falta=r2(devido-recebido);
-  return{pessoa,itens,gasto,anterior,devido,total:devido,recebido,falta,reg};
+  const reg=recs[chave]||null, recebido=reg?r2(reg.valor):0, perdoado=reg?r2(reg.perdoado||0):0, falta=r2(devido-recebido-perdoado);
+  return{pessoa,itens,gasto,anterior,devido,total:devido,recebido,perdoado,falta,reg};
 }
 function acertosDoMes(chave){
   const pessoas=new Set();
   S.lancamentos.forEach(l=>{if(l.responsavel&&l.responsavel!==pessoaPrincipal&&l.mesChave<=chave)pessoas.add(l.responsavel);});
   S.acertos.forEach(a=>{if(a.pessoa!==pessoaPrincipal&&a.mes<=chave)pessoas.add(a.pessoa);});
   return [...pessoas].map(p=>contaPessoa(p,chave))
-    .filter(c=>c&&(c.gasto>0||Math.abs(c.anterior)>=0.01||c.recebido>0))
+    .filter(c=>c&&(c.gasto>0||Math.abs(c.anterior)>=0.01||c.recebido>0||c.perdoado>0))
     .sort((a,b)=>b.devido-a.devido);
 }
 function renderAcerto(chave){
@@ -2241,11 +2315,12 @@ function renderAcerto(chave){
     const quitado=a.falta<=0.005;
     const data=a.reg&&a.reg.recebidoEm?' '+esc(a.reg.recebidoEm.split('-').reverse().slice(0,2).join('/')):'';
     const status=quitado
-      ?`<span class="chip st-pago">✓ ${a.falta<-0.005?'pagou a mais':'quitado'}${data}</span>`
+      ?`<span class="chip st-pago">✓ ${a.falta<-0.005?'pagou a mais':(a.perdoado>0?'encerrado':'quitado')}${data}</span>`
       :(a.recebido>0?`<span class="chip pend">parcial · falta ${fmt(a.falta)}</span>`:'<span class="chip st-pendente">a receber</span>');
     const partes=[`${a.itens.length} lançamento(s) ${fmt(a.gasto)}`];
     if(Math.abs(a.anterior)>=0.01)partes.push(a.anterior>0?`+ saldo anterior ${fmt(a.anterior)}`:`− crédito ${fmt(-a.anterior)}`);
     if(a.recebido>0)partes.push(`recebido ${fmt(a.recebido)}`);
+    if(a.perdoado>0)partes.push(`não cobrado ${fmt(a.perdoado)}`);
     return `<div class="settings-item com-ico acerto-item">
       <div class="lanc-ico avatar" aria-hidden="true">${esc(primeiroNome(a.pessoa).charAt(0).toUpperCase())}</div>
       <div class="settings-item-info">
@@ -2255,13 +2330,14 @@ function renderAcerto(chave){
       <div class="settings-item-actions">
         <button class="btn btn-ghost btn-sm" data-act="ver-extrato" data-resp="${esc(a.pessoa)}">Itens</button>
         ${quitado?'':`<button class="btn btn-ghost btn-sm" data-act="enviar-acerto" data-pessoa="${esc(a.pessoa)}">Enviar</button>`}
-        ${a.recebido>0?`<button class="btn btn-ghost btn-sm" data-act="desfazer-acerto" data-pessoa="${esc(a.pessoa)}">Desfazer</button>`:''}
+        ${a.recebido>0||a.perdoado>0?`<button class="btn btn-ghost btn-sm" data-act="desfazer-acerto" data-pessoa="${esc(a.pessoa)}">Desfazer</button>`:''}
         ${quitado?'':`<button class="btn btn-success btn-sm" data-act="receber-acerto" data-pessoa="${esc(a.pessoa)}">Receber</button>`}
       </div></div>`;
   }).join(''):'<div class="settings-empty">Ninguém te deve nada neste mês.</div>');
 }
 /* Registra quanto a pessoa pagou (tudo ou parte). Pagamentos no mesmo mês
-   se somam; o que faltar passa sozinho para o mês seguinte. */
+   se somam. O que faltar: passa para o mês seguinte (padrão) ou você
+   escolhe "Não cobrar" e o resto fica registrado como perdoado. */
 function receberAcerto(pessoa){
   const chave=mesResumo(), a=contaPessoa(pessoa,chave);if(!a||a.falta<=0)return;
   abrirPagamento({
@@ -2270,25 +2346,29 @@ function receberAcerto(pessoa){
     total:a.falta,
     rotuloTotal:'Tudo',
     dica:Math.abs(a.anterior)>=0.01||a.recebido>0
-      ?`Devido ${fmt(a.devido)}${a.anterior>0.005?` (inclui ${fmt(a.anterior)} do mês anterior)`:''}${a.recebido>0?` · já recebeu ${fmt(a.recebido)}`:''}. O que faltar passa para o mês seguinte.`
-      :'O que faltar passa para o mês seguinte.',
-    aoConfirmar(valor){
+      ?`Devido ${fmt(a.devido)}${a.anterior>0.005?` (inclui ${fmt(a.anterior)} do mês anterior)`:''}${a.recebido>0?` · já recebeu ${fmt(a.recebido)}`:''}.`
+      :'',
+    opcaoResto:true,
+    aoConfirmar(valor,_tudo,resto){
+      if(resto==='perdoar'&&S.servidorV<2){toast('Para "Não cobrar", atualize o Code.gs no Apps Script (veja o LEIAME).','error');return;}
       const novo=r2(a.recebido+valor);
+      const perdoado=resto==='perdoar'?r2(Math.max(0,a.devido-novo)):a.perdoado;
       mutar(()=>{
         S.acertos=S.acertos.filter(x=>!(x.mes===chave&&x.pessoa===pessoa));
-        S.acertos.push({mes:chave,pessoa,valor:novo,recebidoEm:dataHoje()});
-      },'marcarAcerto',{mes:chave+'-01',pessoa,valor:novo,recebido:true});
-      const falta=r2(a.devido-novo);
-      toast(falta>0.005?`${primeiroNome(pessoa)} pagou ${fmt(valor)} — faltam ${fmt(falta)}, que passam para o mês seguinte`
-        :`${primeiroNome(pessoa)} quitou ${chaveExib(chave)} ✓`,'success');
+        S.acertos.push({mes:chave,pessoa,valor:novo,recebidoEm:dataHoje(),perdoado});
+      },'marcarAcerto',{mes:chave+'-01',pessoa,valor:novo,recebido:true,perdoado});
+      const falta=r2(a.devido-novo-perdoado);
+      toast(resto==='perdoar'&&perdoado>0.005?`${valor>0?`${primeiroNome(pessoa)} pagou ${fmt(valor)} · `:''}${fmt(perdoado)} não serão cobrados`
+        :(falta>0.005?`${primeiroNome(pessoa)} pagou ${fmt(valor)} — faltam ${fmt(falta)}, que passam para o mês seguinte`
+        :`${primeiroNome(pessoa)} quitou ${chaveExib(chave)} ✓`),'success');
     }
   });
 }
 function desfazerAcerto(pessoa){
   const chave=mesResumo();
-  if(!confirm(`Apagar os pagamentos de ${primeiroNome(pessoa)} registrados em ${chaveExib(chave)}?`))return;
+  if(!confirm(`Apagar os pagamentos (e o que não foi cobrado) de ${primeiroNome(pessoa)} em ${chaveExib(chave)}?`))return;
   mutar(()=>{S.acertos=S.acertos.filter(x=>!(x.mes===chave&&x.pessoa===pessoa));},
-    'marcarAcerto',{mes:chave+'-01',pessoa,valor:0,recebido:false});
+    'marcarAcerto',{mes:chave+'-01',pessoa,valor:0,recebido:false,perdoado:0});
   toast('Pagamentos do mês desfeitos','info');
 }
 /* Abre o WhatsApp com o resumo pronto (você escolhe o contato). */
@@ -2316,19 +2396,25 @@ function abrirPagamento(o){
   $('pag-valor').value='';
   $('pag-dica').textContent=o.dica||'';
   $('pag-erro').textContent='';
+  $('pag-resto').hidden=!o.opcaoResto;
+  const lv=document.querySelector('input[name="pag-resto"][value="levar"]');if(lv)lv.checked=true;
   $('modal-pag').classList.add('open');
 }
 const fecharPagamento=()=>{$('modal-pag').classList.remove('open');pagamentoAtual=null;};
 function confirmarPagamento(parcial){
   const o=pagamentoAtual;if(!o)return;
   let v=o.total;
+  const marcado=document.querySelector('input[name="pag-resto"]:checked');
+  const resto=o.opcaoResto&&marcado?marcado.value:'levar';
   if(parcial){
     v=parseValor($('pag-valor').value);
-    if(!(v>0)){$('pag-erro').textContent='Digite quanto foi pago.';return;}
+    // "Não cobrar" sem valor = não recebeu nada e não vai cobrar o que falta
+    if(resto==='perdoar'&&!$('pag-valor').value.trim())v=0;
+    else if(!(v>0)){$('pag-erro').textContent='Digite quanto foi pago.';return;}
     if(v>=o.total-0.005)v=o.total; // digitou o total: é pagamento total
   }
   fecharPagamento();
-  o.aoConfirmar(r2(v),v>=o.total-0.005);
+  o.aoConfirmar(r2(v),v>=o.total-0.005,resto);
 }
 
 /* Valor que "conta" do anterior até o novo (meio segundo). */
@@ -2526,26 +2612,196 @@ function renderTop(A){
     </div>`).join(''):'<div class="settings-empty">Nenhum lançamento neste mês.</div>');
 }
 
-/* ── Já comprometido: o que as compras de hoje ainda vão cobrar ── */
+/* ── Já comprometido: parcelas de compras já feitas + cobranças fixas ──
+   As fixas que o servidor ainda não criou entram pela regra (valor atual). */
 function renderFuturo(chave,quem=null){
-  const porMes={};
-  S.lancamentos.forEach(l=>{if(l.mesChave>chave&&(!quem||l.responsavel===quem))porMes[l.mesChave]=(porMes[l.mesChave]||0)+l.valor;});
-  const totalTudo=Object.values(porMes).reduce((s,v)=>s+v,0);
-  const qtdMeses=Object.keys(porMes).length;
+  const parc={},fix={};
+  S.lancamentos.forEach(l=>{
+    if(l.mesChave<=chave||(quem&&l.responsavel!==quem))return;
+    const alvo=ehRecorrente(l)?fix:parc;alvo[l.mesChave]=(alvo[l.mesChave]||0)+l.valor;
+  });
+  const totalTudo=Object.values(parc).reduce((s,v)=>s+v,0);
+  const qtdMeses=Object.keys(parc).length;
   contar($('dash-futuro'),totalTudo);
   $('var-futuro').textContent=totalTudo?`em ${qtdMeses} mês(es) à frente`:'nada parcelado à frente';
-  const meses=[];
+  const meses=[];let algo=false;
   for(let off=1;off<=6;off++){
-    const k=chaveDesloc(chave,off), v=porMes[k]||0;
-    meses.push({k,partes:[{v,cor:'var(--s-gasto)'}],linha:null,estado:'cheio',tip:`${chaveExib(k)}\nJá comprometido: ${fmt(v)}`});
+    const k=chaveDesloc(chave,off);
+    let f=fix[k]||0;
+    S.recorrentes.forEach(r=>{
+      if(!r.ativa||(quem&&r.responsavel!==quem)||!r.mesInicio||r.mesInicio>k||(r.mesFim&&k>r.mesFim))return;
+      if(!S.lancamentos.some(l=>l.mesChave===k&&l.grupoId===PREFIXO_REC+r.id))f+=r.valor;
+    });
+    f=r2(f);const v=r2(parc[k]||0);if(v||f)algo=true;
+    meses.push({k,partes:[{v,cor:'var(--s-gasto)'},{v:f,cor:'var(--s-fixa)'}],linha:null,estado:'cheio',
+      tip:`${chaveExib(k)}\nParcelas: ${fmt(v)}\nFixas: ${fmt(f)}\nTotal: ${fmt(v+f)}`});
   }
   const el=$('chart-futuro');
-  setHtml(el,totalTudo
+  setHtml(el,algo
     ?colunas(el,meses,{altura:180,rotular:'max'})
-    :'<div class="empty-state"><span class="icon">◦</span><p>Nada parcelado para os próximos meses.</p></div>');
-  $('nota-futuro').textContent=totalTudo
-    ? `${fmt(totalTudo)} em parcelas de compras já feitas${!quem?', de todas as pessoas':(quem===pessoaPrincipal?', só suas':`, só de ${primeiroNome(quem)}`)}. Cobranças fixas não entram: elas são criadas quando o mês chega.`
+    :'<div class="empty-state"><span class="icon">◦</span><p>Nada comprometido para os próximos meses.</p></div>');
+  const dequem=!quem?', de todas as pessoas':(quem===pessoaPrincipal?', só seus':`, só de ${primeiroNome(quem)}`);
+  $('nota-futuro').textContent=algo
+    ? `${fmt(meses[0].partes[0].v+meses[0].partes[1].v)} já comprometidos em ${chaveExib(meses[0].k)}${dequem}. Fixas pelo valor de hoje.`
     : '';
+  // parcelamentos que terminam nos próximos 6 meses (e quanto liberam por mês)
+  const fim={};
+  S.lancamentos.forEach(l=>{
+    if(!(l.parcelas>1)||ehRecorrente(l)||(quem&&l.responsavel!==quem)||l.parcelaAtual!==l.parcelas)return;
+    if(l.mesChave<=chave||l.mesChave>chaveDesloc(chave,6))return;
+    const k=semDiv(l.desc)+'|'+l.mesChave+'|'+baseGrupo(l.grupoId);
+    const x=fim[k]=fim[k]||{desc:semDiv(l.desc),mes:l.mesChave,valor:0,cartao:l.cartao};x.valor=r2(x.valor+l.valor);
+  });
+  const lista=Object.values(fim).sort((a,b)=>a.mes.localeCompare(b.mes)||b.valor-a.valor);
+  setHtml($('lista-termina'),lista.length?`<div class="termina-tit">Terminam em breve</div>`+lista.slice(0,6).map(x=>`<div class="settings-item termina-item">
+      <div class="settings-item-info"><div class="settings-item-name">${esc(x.desc)}</div>
+      <div class="settings-item-sub">última parcela em ${esc(chaveExib(x.mes))} · ${esc(x.cartao)}</div></div>
+      <div class="settings-item-actions"><span class="chip st-pago">libera ${fmt(x.valor)}/mês</span></div></div>`).join('')
+    +(lista.length>6?`<div class="field-hint">e mais ${lista.length-6}</div>`:''):'');
+}
+
+/* ── EMPRÉSTIMOS (só você vê) ──
+   Ficam numa aba própria da planilha. O link pessoal de cada pessoa só
+   mostra lançamentos de contas, então empréstimo nunca aparece para ela.
+   Saldo = emprestei − devolveu − passei para as contas dela. "Cobrar nas
+   contas" cria lançamentos (parcelados, se quiser) no nome da pessoa: a
+   partir daí entram no acerto e ela vê como qualquer conta. */
+let empAberto=null, empModo=null;
+function empDaAPI(e){
+  return{id:String(e.id),pessoa:String(e.pessoa||''),data:String(e.data||'').slice(0,10),desc:String(e.descricao==null?'':e.descricao),
+    valor:Number(e.valor)||0,tipo:String(e.tipo||'emprestei'),grupoId:String(e.grupo_id||'')};
+}
+const empParaAPI=e=>({id:e.id,pessoa:e.pessoa,data:e.data,descricao:e.desc,valor:e.valor,tipo:e.tipo,grupoId:e.grupoId||''});
+function saldoEmprestimo(pessoa){
+  let emp=0,dev=0,cob=0;
+  S.emprestimos.forEach(e=>{if(e.pessoa!==pessoa)return;if(e.tipo==='emprestei')emp+=e.valor;else if(e.tipo==='devolveu')dev+=e.valor;else cob+=e.valor;});
+  return{emp:r2(emp),dev:r2(dev),cob:r2(cob),saldo:r2(emp-dev-cob)};
+}
+function renderEmprestimos(){
+  const card=$('card-emp');if(!card)return;
+  if(!pessoaPrincipal){card.style.display='none';return;}
+  card.style.display='';
+  const velho=S.servidorV<2;
+  const pessoas=[...new Set(S.emprestimos.map(e=>e.pessoa))].filter(Boolean)
+    .sort((a,b)=>saldoEmprestimo(b).saldo-saldoEmprestimo(a).saldo);
+  const total=r2(pessoas.reduce((s,p)=>s+Math.max(0,saldoEmprestimo(p).saldo),0));
+  const rotTipo={emprestei:'Emprestei',devolveu:'Devolveu',cobrado:'Passou para as contas'};
+  const linhas=pessoas.map(p=>{
+    const s=saldoEmprestimo(p), aberto=empAberto===p;
+    const hist=aberto?S.emprestimos.filter(e=>e.pessoa===p).sort((a,b)=>b.data.localeCompare(a.data)).map(e=>`<div class="emp-mov">
+        <span class="emp-data">${esc(e.data.split('-').reverse().join('/'))}</span>
+        <span class="emp-desc">${esc(rotTipo[e.tipo]||e.tipo)}${e.desc?' · '+esc(e.desc):''}</span>
+        <b class="${e.tipo==='emprestei'?'':'ok'}">${e.tipo==='emprestei'?'+':'−'} ${fmt(e.valor)}</b>
+        <button class="btn btn-ghost btn-sm" data-act="emp-remover" data-id="${esc(e.id)}" aria-label="Apagar">✕</button></div>`).join(''):'';
+    return `<div class="settings-item com-ico emp-item">
+      <div class="lanc-ico avatar" aria-hidden="true">${esc(primeiroNome(p).charAt(0).toUpperCase())}</div>
+      <div class="settings-item-info">
+        <div class="settings-item-name">${esc(primeiroNome(p))} ${s.saldo>0.005?`<span class="chip pend">te deve ${fmt(s.saldo)}</span>`:(s.saldo<-0.005?`<span class="chip">você deve ${fmt(-s.saldo)}</span>`:'<span class="chip st-pago">✓ zerado</span>')}</div>
+        <div class="settings-item-sub">emprestou ${fmt(s.emp)}${s.dev?` · devolveu ${fmt(s.dev)}`:''}${s.cob?` · nas contas ${fmt(s.cob)}`:''}</div>
+      </div>
+      <div class="settings-item-actions">
+        <button class="btn btn-ghost btn-sm" data-act="emp-hist" data-pessoa="${esc(p)}">${aberto?'Fechar':'Histórico'}</button>
+        <button class="btn btn-ghost btn-sm" data-act="emp-novo" data-tipo="emprestei" data-pessoa="${esc(p)}">+ Emprestei</button>
+        ${s.saldo>0.005?`<button class="btn btn-ghost btn-sm" data-act="emp-novo" data-tipo="cobrado" data-pessoa="${esc(p)}">Cobrar nas contas</button>
+        <button class="btn btn-success btn-sm" data-act="emp-novo" data-tipo="devolveu" data-pessoa="${esc(p)}">Devolveu</button>`:''}
+      </div>
+      ${aberto?`<div class="emp-hist">${hist}</div>`:''}
+    </div>`;
+  }).join('');
+  setHtml($('emp-corpo'),(velho?'<div class="field-hint" style="color:var(--amber)">Para gravar empréstimos, cole o Code.gs novo no Apps Script e publique uma nova versão (veja o LEIAME).</div>':'')
+    +(pessoas.length?`<div class="acerto-resumo"><span>Te devem <b>${fmt(total)}</b></span></div><div class="settings-list">${linhas}</div>`
+      :'<div class="settings-empty">Nenhum empréstimo anotado.</div>')
+    +`<button class="btn btn-ghost btn-sm" style="margin-top:10px" data-act="emp-novo" data-tipo="emprestei" data-pessoa="">+ Novo empréstimo</button>`);
+}
+function abrirEmprestimo(tipo,pessoa){
+  if(S.servidorV<2)return toast('Para gravar empréstimos, atualize o Code.gs no Apps Script (veja o LEIAME).','error');
+  empModo=tipo;
+  const outras=S.pessoas.filter(p=>p.nome!==pessoaPrincipal);
+  preencherSelect($('emp-pessoa'),nomes(outras),pessoa||(outras.find(p=>/cindhy/i.test(p.nome))||outras[0]||{}).nome||'');
+  $('emp-pessoa').disabled=!!pessoa&&tipo!=='emprestei';
+  const s=pessoa?saldoEmprestimo(pessoa):null;
+  $('emp-titulo').textContent={emprestei:'Emprestei',devolveu:'Devolveu',cobrado:'Cobrar nas contas'}[tipo];
+  $('emp-sub').textContent=s&&tipo!=='emprestei'?`${primeiroNome(pessoa)} te deve ${fmt(s.saldo)}`:'Só você vê';
+  $('emp-data').value=dataHoje();$('emp-desc').value='';
+  $('emp-valor').value=s&&tipo!=='emprestei'?fmtNum(s.saldo):'';
+  $('emp-cobrar').hidden=tipo!=='cobrado';$('emp-data-box').hidden=tipo==='cobrado';
+  if(tipo==='cobrado'){
+    $('emp-parcelas').value='1';
+    const k0=chaveHoje();
+    setHtml($('emp-mes'),Array.from({length:6},(_,i)=>chaveDesloc(k0,i)).map(k=>`<option value="${k}">${esc(chaveExib(k))}</option>`).join(''));
+    const cat=acharCategoriaNome('Empréstimos')||acharCategoriaNome('Empréstimo');
+    preencherSelect($('emp-cat'),nomes(S.categorias),cat||(S.categorias[0]||{}).nome||'');
+    $('emp-desc').placeholder='Empréstimo';
+  }else $('emp-desc').placeholder=tipo==='emprestei'?'Para quê? (opcional)':'Observação (opcional)';
+  $('emp-erro').textContent='';
+  $('modal-emp').classList.add('open');
+  setTimeout(()=>$('emp-valor').focus(),50);
+}
+const fecharEmprestimo=()=>{const m=$('modal-emp');if(m)m.classList.remove('open');empModo=null;};
+function salvarEmprestimo(){
+  const tipo=empModo;if(!tipo)return;
+  const pessoa=$('emp-pessoa').value, valor=parseValor($('emp-valor').value), desc=$('emp-desc').value.trim();
+  if(!pessoa){$('emp-erro').textContent='Escolha a pessoa.';return;}
+  if(!(valor>0)){$('emp-erro').textContent='Digite o valor.';return;}
+  const rec={id:uid(),pessoa,data:$('emp-data').value||dataHoje(),desc,valor:r2(valor),tipo,grupoId:''};
+  if(tipo!=='cobrado'){
+    fecharEmprestimo();
+    mutar(()=>S.emprestimos.push(rec),'salvarEmprestimo',{item:empParaAPI(rec)});
+    toast(tipo==='emprestei'?`Anotado: emprestou ${fmt(valor)} para ${primeiroNome(pessoa)}`:`${primeiroNome(pessoa)} devolveu ${fmt(valor)}`,'success');
+    return;
+  }
+  const n=Math.max(1,Math.min(60,parseInt($('emp-parcelas').value,10)||1));
+  const [ano,mes]=$('emp-mes').value.split('-').map(Number);
+  const grupo='EMP-'+uid().slice(0,8).toUpperCase();
+  const itens=gerarParcelas(desc||'Empréstimo',mes,ano,dividirValor(valor,n),pessoa,'Sem cartão',$('emp-cat').value,{n,p0:1,incluirPagas:false},grupo)
+    .map(l=>({...l,pago:false,pagoEm:''}));
+  rec.data=dataHoje();rec.grupoId=grupo;
+  fecharEmprestimo();
+  versaoLocal++;
+  S.lancamentos.push(...itens);S.emprestimos.push(rec);
+  salvarCache();
+  enfileirar('addLancamentos',{itens:itens.map(paraAPI)});
+  enfileirar('salvarEmprestimo',{item:empParaAPI(rec)});
+  render();processarFila();
+  toast(`${fmt(valor)} nas contas de ${primeiroNome(pessoa)}${n>1?` em ${n}x de ${fmt(itens[0].valor)}`:''} a partir de ${chaveExib(`${ano}-${pad2(mes)}`)}`,'success');
+}
+function removerEmprestimo(id){
+  const e=S.emprestimos.find(x=>x.id===id);if(!e)return;
+  const lanc=e.grupoId?S.lancamentos.filter(l=>l.grupoId===e.grupoId):[];
+  if(!confirm(lanc.length?`Desfazer a cobrança de ${fmt(e.valor)}?\n\nOs ${lanc.length} lançamento(s) criados nas contas de ${primeiroNome(e.pessoa)} também serão apagados.`
+    :`Apagar este registro de ${fmt(e.valor)}?`))return;
+  versaoLocal++;
+  S.emprestimos=S.emprestimos.filter(x=>x.id!==id);
+  if(lanc.length){const ids=new Set(lanc.map(l=>l.id));S.lancamentos=S.lancamentos.filter(l=>!ids.has(l.id));}
+  salvarCache();
+  if(lanc.length)enfileirar('deleteLancamentos',{ids:lanc.map(l=>l.id)});
+  enfileirar('removerEmprestimo',{id});
+  render();processarFila();
+  toast('Registro apagado','info');
+}
+
+/* ── FECHAR O MÊS ──
+   Lista do que falta para dar o mês por encerrado: faturas pagas, contas
+   sem cartão pagas, acertos recebidos e a receita lançada. Nada é gravado:
+   o app confere sozinho e mostra "mês fechado" quando tudo estiver ok. */
+function renderFechamento(chave){
+  const el=$('fechar-corpo');if(!el)return;
+  const doMes=S.lancamentos.filter(l=>l.mesChave===chave);
+  const passos=[];
+  const cartoes=[...new Set(doMes.filter(l=>l.cartao&&l.cartao!=='Sem cartão').map(l=>l.cartao))].sort();
+  cartoes.forEach(c=>{
+    const it=doMes.filter(l=>l.cartao===c), abertos=it.filter(l=>!l.pago);
+    const fv=vencimentoDoMes(c,chave);
+    passos.push({ok:!abertos.length,txt:`Fatura ${c} paga`,sub:abertos.length?`falta ${fmt(somaValores(abertos))}${fv?` · vence ${fmtDia(fv.vence)}`:''}`:''});
+  });
+  const contas=doMes.filter(l=>!l.cartao||l.cartao==='Sem cartão'), cAbertas=contas.filter(l=>!l.pago);
+  if(contas.length)passos.push({ok:!cAbertas.length,txt:'Contas sem cartão pagas',sub:cAbertas.length?`${cAbertas.length} de ${contas.length} em aberto · ${fmt(somaValores(cAbertas))}`:''});
+  if(pessoaPrincipal)acertosDoMes(chave).forEach(a=>passos.push({ok:a.falta<=0.005,txt:`Acerto com ${primeiroNome(a.pessoa)}`,sub:a.falta>0.005?`falta receber ${fmt(a.falta)}`:''}));
+  passos.push({ok:(S.receitas[chave]||0)>0,txt:'Receita do mês lançada',sub:''});
+  const feitos=passos.filter(p=>p.ok).length, tudo=feitos===passos.length;
+  setHtml($('fechar-titulo'),`Fechar ${esc(chaveExib(chave))} <span class="card-dica">${tudo?'✓ mês fechado':`${feitos} de ${passos.length}`}</span>`);
+  setHtml(el,`<div class="fechar-barra" role="img" aria-label="${feitos} de ${passos.length} feitos"><i style="width:${(feitos/passos.length*100).toFixed(0)}%"></i></div>`
+    +passos.map(p=>`<div class="fechar-passo${p.ok?' ok':''}"><span class="fechar-marca" aria-hidden="true">${p.ok?'✓':'○'}</span><span>${esc(p.txt)}${p.sub?` <small>${esc(p.sub)}</small>`:''}</span></div>`).join(''));
 }
 /* {campo:'cat'} torna cada linha um botão que abre o extrato filtrado */
 function chart(elId,pares,vazio,{campo=null,icone=null}={}){
@@ -3235,6 +3491,16 @@ function classificarImportacao(itens){
   });
 }
 let importacao=null;
+/* Fixas do cartão/mês importado que nenhuma linha casou: podem cair
+   mais para o fim do mês (não é erro), mas é bom saber. */
+function faltamFixas(itens){
+  const usados=new Set();itens.forEach(i=>i.alvo&&i.alvo.itens.forEach(l=>usados.add(l.id)));
+  const pares=[...new Set(itens.map(i=>i.cartao+'|'+i.mesChave))];
+  const faltam=S.lancamentos.filter(l=>ehRecorrente(l)&&!usados.has(l.id)&&pares.includes(l.cartao+'|'+l.mesChave));
+  if(!faltam.length)return'';
+  const nomesF=[...new Set(faltam.map(l=>semDiv(l.desc)))];
+  return `<div class="imp-fixas-falta">Fixas que ainda não apareceram nesta fatura: <b>${nomesF.map(esc).join(', ')}</b>. Se cobram mais para o fim do mês, é normal; elas continuam lançadas.</div>`;
+}
 function lerImportacaoUI(){
   const txt=$('imp-texto').value;
   if(!txt.trim()){setHtml($('imp-resultado'),'');importacao=null;atualizarBotaoImportar();return;}
@@ -3262,8 +3528,12 @@ function renderImportacao(){
     let st='';
     if(it.status==='novo')st=`<span class="imp-st novo">Novo</span>${it.parcelas>1&&it.parcelaAtual<it.parcelas?` <span class="imp-obs">cria até ${pad2(it.parcelas)}/${pad2(it.parcelas)}</span>`:''}`;
     const comoNome=it.outroNome?` <span class="imp-obs">como "${esc(it.alvo.desc)}"</span>`:'';
+    // cobrança fixa com preço novo: oferece levar o valor para os próximos meses
+    const regra=it.status==='corrigir'&&it.alvo.itens.length===1?regraDe(it.alvo.itens[0]):null;
+    it.regraFixa=regra||null;if(regra&&it.atualizaFixa===undefined)it.atualizaFixa=true;
+    const fixaTxt=regra?`<label class="imp-fixa"><input type="checkbox" class="imp-fixa-check" data-i="${i}"${it.atualizaFixa?' checked':''}> preço da fixa mudou: usar ${fmt(it.valor)} nos próximos meses</label>`:'';
     if(it.status==='igual')st=`<span class="imp-st igual">✓ Já lançado</span>${comoNome}`;
-    if(it.status==='corrigir')st=`<span class="imp-st corrigir">Corrigir valor</span> <span class="imp-obs">${fmt(it.alvo.total)} → ${fmt(it.valor)}</span>${comoNome}`;
+    if(it.status==='corrigir')st=`<span class="imp-st corrigir">Corrigir valor</span> <span class="imp-obs">${fmt(it.alvo.total)} → ${fmt(it.valor)}</span>${comoNome}${fixaTxt}`;
     if(it.status==='duvida')st=`<span class="imp-st duvida">Parece "${esc(it.alvo.desc)}"</span>
       <span class="imp-escolha"><button class="${it.ehOutro?'':'on'}" data-imp="mesmo" data-i="${i}">É o mesmo</button><button class="${it.ehOutro?'on':''}" data-imp="outro" data-i="${i}">É outro</button></span>${it.ajustaN?`<span class="imp-obs">é o mesmo → passa de ${pad2(it.alvo.itens[0].parcelas)} para ${pad2(it.parcelas)} parcelas</span>`:''}`;
     const podeMarcar=it.status==='novo'||it.status==='corrigir';
@@ -3284,6 +3554,7 @@ function renderImportacao(){
   const listaAntes=el.querySelector('.imp-lista'), rolLista=listaAntes?listaAntes.scrollTop:0, rolPag=window.scrollY;
   setHtml(el,(itens.length?`<div class="imp-cab"><b>${esc(fatura)}</b><span>${cont.novo} novo(s) · ${cont.igual} já lançado(s) · ${cont.corrigir} a corrigir${cont.duvida?` · ${cont.duvida} para decidir`:''}</span></div>`:'')+
     (avisos.length?`<div class="imp-avisos">${avisos.map(a=>`<div>⚠ ${esc(a)}</div>`).join('')}</div>`:'')+
+    faltamFixas(itens)+
     `<div class="imp-lista">${linhas}</div>`);
   const listaDepois=el.querySelector('.imp-lista');if(listaDepois)listaDepois.scrollTop=rolLista;
   if(Math.abs(window.scrollY-rolPag)>1)window.scrollTo(0,rolPag);
@@ -3346,7 +3617,10 @@ function salvarImportacao(){
   render();processarFila();
   const qtdNovos=sel.filter(i=>i.status==='novo').length, qtdCor=sel.filter(i=>i.status==='corrigir').length, qtdAj=sel.filter(i=>i.status==='duvida').length;
   toast(`Importado: ${qtdNovos} compra(s) nova(s)${qtdCor?`, ${qtdCor} valor(es) corrigido(s)`:''}${qtdAj?`, ${qtdAj} parcelamento(s) acertado(s)`:''}`,'success');
+  const fixas=sel.filter(i=>i.status==='corrigir'&&i.regraFixa&&i.atualizaFixa);
   $('imp-texto').value='';importacao=null;renderImportacao();
+  // preço novo da fixa vale daqui para frente (precisa de internet)
+  (async()=>{for(const it of fixas)await gravarRecorrente({...it.regraFixa,valor:it.valor},true,`Fixa "${it.regraFixa.desc}" agora é ${fmt(it.valor)}`);})();
 }
 async function colarImportacao(){
   try{const t=await navigator.clipboard.readText();if(t){$('imp-texto').value=t;lerImportacaoUI();return;}}catch(e){}
@@ -3503,6 +3777,7 @@ function linhaEdicao(l){
             :''}
         </div>
       </details>
+      ${blocoAdiantar(l)}
       ${l.parcelas>1&&!ehRecorrente(l)?`<div class="field-hint edit-aviso">Parcela ${pad2(l.parcelaAtual)}/${pad2(l.parcelas)}: o que você mudar vale para esta e as seguintes${l.parcelaAtual<l.parcelas?` (até ${pad2(l.parcelas)}/${pad2(l.parcelas)})`:''}. As anteriores não mudam.</div>`:''}
       <div class="edit-botoes" style="display:flex;gap:9px">
         <button class="btn btn-primary" style="flex:1" data-act="salvar-edicao" data-id="${esc(l.id)}">Salvar</button>
@@ -3511,6 +3786,74 @@ function linhaEdicao(l){
     </div></div>`;
 }
 const CAMPOS_EDICAO=['e-desc','e-mes','e-ano','e-resp','e-car','e-cat','e-val'];
+/* ── ADIANTAR PARCELAS ──
+   Quitou parcelas antes da hora (cartão, financiamento, empréstimo): as
+   ÚLTIMAS parcelas em aberto saem dos meses seguintes e entram no mês em
+   que você pagou, com o valor pago (desconto da antecipação, se houver).
+   Compra dividida: adianta a parte de todas as pessoas juntas. Sem cartão,
+   já ficam pagas; no cartão, entram na fatura daquele mês. */
+const baseGrupo=g=>String(g||'').replace(/-D?\d+$/,'');
+function gruposDaCompra(l){
+  if(!ehDividido(l))return [S.lancamentos.filter(x=>x.grupoId===l.grupoId)];
+  const b=baseGrupo(l.grupoId), d=semDiv(l.desc), por={};
+  S.lancamentos.forEach(x=>{if(ehDividido(x)&&x.parcelas===l.parcelas&&baseGrupo(x.grupoId)===b&&semDiv(x.desc)===d)(por[x.grupoId]=por[x.grupoId]||[]).push(x);});
+  const gs=Object.values(por);return gs.length?gs:[S.lancamentos.filter(x=>x.grupoId===l.grupoId)];
+}
+const adiantaveis=(g,l,chave)=>g.filter(x=>!x.pago&&x.parcelaAtual>l.parcelaAtual&&x.mesChave>chave).sort((a,b)=>b.parcelaAtual-a.parcelaAtual);
+function mesPadraoAdiantar(l){
+  const ft=l.cartao&&l.cartao!=='Sem cartão'?faturaDoCartao(l.cartao):null;
+  const k=ft?`${ft.ano}-${pad2(ft.mes)}`:chaveHoje();
+  return k<l.mesChave?l.mesChave:k;
+}
+function blocoAdiantar(l){
+  if(!(l.parcelas>1)||ehRecorrente(l))return'';
+  const k0=mesPadraoAdiantar(l), grupos=gruposDaCompra(l);
+  const resto=grupos.map(g=>adiantaveis(g,l,k0));
+  const n=Math.min(...resto.map(r=>r.length));
+  if(!(n>0))return'';
+  const soma=r2(resto.reduce((s,r)=>s+somaValores(r),0));
+  const meses=[];for(let i=-1;i<=2;i++){const k=chaveDesloc(k0,i);if(k>=l.mesChave&&!meses.includes(k))meses.push(k);}
+  return `<details class="edit-div" id="e-adi-box">
+        <summary>Adiantar parcelas</summary>
+        <div class="edit-div-corpo">
+          <div class="field-hint">Quitou antes da hora? As últimas parcelas saem dos meses seguintes e entram no mês em que você pagou. Depois de ${esc(chaveExib(k0))} ainda faltam <b>${n}</b> (${fmt(soma)}${grupos.length>1?', somando todas as pessoas':''}).</div>
+          <div class="adi-linha">
+            <label>Quantas<input type="number" id="adi-qtd" class="inp" min="1" max="${n}" value="1" inputmode="numeric"></label>
+            <label>Pagou no total<input type="text" id="adi-valor" class="inp" placeholder="${fmtNum(soma)}" inputmode="decimal" autocomplete="off" data-dinheiro></label>
+            <label>Pagou em<select id="adi-mes" class="inp">${meses.map(k=>`<option value="${k}"${k===k0?' selected':''}>${esc(chaveExib(k))}</option>`).join('')}</select></label>
+          </div>
+          <div class="field-hint">Vazio = o valor cheio das parcelas. Com desconto, digite quanto pagou.</div>
+          <button class="btn btn-primary btn-sm" data-act="adiantar-parcelas" data-id="${esc(l.id)}">Adiantar</button>
+        </div>
+      </details>`;
+}
+function adiantarParcelas(id){
+  const item=S.lancamentos.find(l=>l.id===id);if(!item)return;
+  const qtd=parseInt($('adi-qtd').value,10), chave=$('adi-mes').value;
+  if(!(qtd>0))return toast('Quantas parcelas você adiantou?','error');
+  const grupos=gruposDaCompra(item).map(g=>adiantaveis(g,item,chave));
+  const n=Math.min(...grupos.map(g=>g.length));
+  if(qtd>n)return toast(`Depois de ${chaveExib(chave)} só faltam ${n} parcela(s)`,'error');
+  const mover=grupos.map(g=>g.slice(0,qtd));
+  const cheio=r2(mover.reduce((s,g)=>s+somaValores(g),0));
+  const txt=$('adi-valor').value.trim(), total=txt?parseValor(txt):cheio;
+  if(!(total>0))return toast('Valor pago inválido','error');
+  // reparte o total pago entre as pessoas (proporcional) e depois entre as parcelas, em centavos
+  const somas=mover.map(g=>somaValores(g));let falta=Math.round(total*100);
+  const porGrupo=somas.map((v,i)=>{const c=i===somas.length-1?falta:Math.round(total*100*v/cheio);falta-=c;return c/100;});
+  const semCartao=!item.cartao||item.cartao==='Sem cartão', hoje=dataHoje(), mudancas=[];
+  mover.forEach((g,i)=>{
+    const cotas=dividirValor(porGrupo[i],g.length);
+    g.forEach((l,k)=>mudancas.push([l,{...l,mesChave:chave,valor:cotas[k],pago:semCartao?true:l.pago,pagoEm:semCartao?hoje:l.pagoEm}]));
+  });
+  editandoId=null;versaoLocal++;
+  mudancas.forEach(([l,nv])=>Object.assign(l,nv));
+  salvarCache();
+  mudancas.forEach(([,nv])=>enfileirar('updateLancamento',{item:paraAPI(nv)}));
+  render();processarFila();
+  const econ=r2(cheio-total);
+  toast(`${qtd} parcela(s) adiantada(s) para ${chaveExib(chave)}: ${fmt(total)}${econ>0.005?` (desconto de ${fmt(econ)})`:''}`,'success');
+}
 function capturarRascunho(){
   if(!editandoId||!$('e-desc'))return null;
   const r={id:editandoId,valores:{},foco:null,sel:null};
@@ -4408,6 +4751,10 @@ const ACOES={
   'editar':el=>{editandoId=el.dataset.id;render();const d=$('e-desc');if(d)d.focus();},
   'cancelar-edicao':()=>{editandoId=null;render();},
   'salvar-edicao':el=>salvarEdicao(el.dataset.id),
+  'adiantar-parcelas':el=>adiantarParcelas(el.dataset.id),
+  'emp-novo':el=>abrirEmprestimo(el.dataset.tipo,el.dataset.pessoa),
+  'emp-hist':el=>{empAberto=empAberto===el.dataset.pessoa?null:el.dataset.pessoa;renderEmprestimos();},
+  'emp-remover':el=>removerEmprestimo(el.dataset.id),
   'excluir':el=>excluir(el.dataset.id),
   'excluir-grupo':el=>excluirGrupo(el.dataset.grupo),
   'alternar-pago':el=>alternarPago(el.dataset.id),
@@ -4463,7 +4810,7 @@ document.addEventListener('click',e=>{
   if(nav)mudarPagina(nav.dataset.pagina);
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){fecharModalReceita();fecharModalSenha();fecharModalIcone();fecharPagamento();}
+  if(e.key==='Escape'){fecharModalReceita();fecharModalSenha();fecharModalIcone();fecharPagamento();fecharEmprestimo();}
   if(e.key==='Enter'&&e.target&&CAMPOS_EDICAO.includes(e.target.id)&&e.target.tagName==='INPUT'){
     e.preventDefault();salvarEdicao(editandoId);return;
   }
@@ -4518,6 +4865,7 @@ on('imp-resultado','change',e=>{
   if(e.target.classList.contains('imp-check'))it.incluir=e.target.checked;
   if(e.target.classList.contains('imp-cat')){it.categoria=e.target.value;it.incluir=true;}
   if(e.target.classList.contains('imp-pes'))it.pessoas=e.target.value.split('+');
+  if(e.target.classList.contains('imp-fixa-check'))it.atualizaFixa=e.target.checked;
   renderImportacao();
 });
 on('imp-resultado','click',e=>{
@@ -4569,6 +4917,9 @@ on('pag-total','click',()=>confirmarPagamento(false));
 on('pag-parcial','click',()=>confirmarPagamento(true));
 on('pag-valor','keydown',e=>{if(e.key==='Enter'){e.preventDefault();confirmarPagamento(true);}});
 on('pag-cancelar','click',fecharPagamento);
+on('emp-salvar','click',salvarEmprestimo);
+on('emp-cancelar','click',fecharEmprestimo);
+on('emp-valor','keydown',e=>{if(e.key==='Enter'){e.preventDefault();salvarEmprestimo();}});
 on('btn-fechar-icone','click',fecharModalIcone);
 on('modal-senha','click',function(e){if(e.target===this)fecharModalSenha();});
 

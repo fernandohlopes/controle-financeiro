@@ -117,6 +117,9 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('pagou a mais: vira crédito', conta('2026-12'), [-88.06,11.94,0,11.94]);
     no(`S.acertos=[{mes:'2026-11',pessoa:'Cindhy Medeiros',valor:611.94}]`);
     confere('quitou novembro: dezembro sem saldo', conta('2026-12'), [0,100,0,100]);
+    no(`S.acertos=[{mes:'2026-11',pessoa:'Cindhy Medeiros',valor:300,perdoado:311.94}]`);
+    confere('não cobrar: novembro encerrado', conta('2026-11'), [0,611.94,300,0]);
+    confere('não cobrar: nada passa para dezembro', conta('2026-12'), [0,100,0,100]);
     no(`S.acertos=[]`);
 
     // fatura paga só em parte: o resto vai para a próxima fatura
@@ -206,6 +209,44 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('csv: lista lida pelo importador', no(`lerImportacao(__csv.texto).itens.map(i=>[i.desc,i.valor,i.pessoas.join('+'),i.parcelaAtual])`),
       [['Academia Fit',119.9,'Cintia Muniz',1],['Mesa e Sofa',1001.79,'Cintia Muniz',8],['Mercado Assai',389.9,'Fernando Lopes',1]]);
     confere('csv: separador ; e valor com vírgula', no(`csvParaLista('data;descrição;valor\\n05/11/2026;Padaria;12,50','fatura.csv').texto.split('\\n')[1]`), 'Padaria | 12,50 | Lanches | Fernando');
+
+    // adiantar parcelas: as últimas saem dos meses seguintes e entram no mês pago
+    no(`
+      for(let k=1;k<=10;k++)S.lancamentos.push({id:'af'+k,desc:'Financiamento',mesChave:chaveDesloc('2026-11',k-1),valor:100,responsavel:'Fernando Lopes',cartao:'Sem cartão',categoria:'Contas da casa',parcelas:10,parcelaAtual:k,grupoId:'af',pago:false});
+      outbox=[];
+      const mk=(tag,id,v)=>{const e=document.createElement(tag);e.id=id;e.value=v;e.className='tmp-teste';if(tag==='select'){const o=document.createElement('option');o.value=v;e.appendChild(o);e.value=v;}document.body.appendChild(e);};
+      mk('input','adi-qtd','3');mk('input','adi-valor','270,00');mk('select','adi-mes','2026-11');
+      adiantarParcelas('af1');
+      document.querySelectorAll('.tmp-teste').forEach(e=>e.remove());
+    `);
+    confere('adiantar: 3 últimas no mês pago, com desconto e pagas',
+      no(`S.lancamentos.filter(l=>l.grupoId==='af'&&l.mesChave==='2026-11').map(l=>[l.parcelaAtual,l.valor,l.pago]).sort((a,b)=>a[0]-b[0])`),
+      [[1,100,false],[8,90,true],[9,90,true],[10,90,true]]);
+    confere('adiantar: a 7ª continua no lugar', no(`S.lancamentos.find(l=>l.id==='af7').mesChave`), '2027-05');
+    confere('adiantar: vai para a fila', no(`outbox.filter(o=>o.acao==='updateLancamento').length`), 3);
+    confere('adiantar: bloco aparece na edição', no(`/Adiantar parcelas/.test(blocoAdiantar(S.lancamentos.find(l=>l.id==='af1')))`), true);
+    no(`S.lancamentos=S.lancamentos.filter(l=>l.grupoId!=='af');outbox=[];`);
+
+    // empréstimos: saldo e "cobrar nas contas"
+    no(`S.emprestimos=[
+      {id:'e1',pessoa:'Cindhy Medeiros',data:'2026-10-02',desc:'',valor:500,tipo:'emprestei',grupoId:''},
+      {id:'e2',pessoa:'Cindhy Medeiros',data:'2026-10-20',desc:'',valor:100,tipo:'devolveu',grupoId:''}];S.servidorV=2;`);
+    confere('empréstimo: saldo', no(`saldoEmprestimo('Cindhy Medeiros')`), {emp:500,dev:100,cob:0,saldo:400});
+    no(`outbox=[];abrirEmprestimo('cobrado','Cindhy Medeiros');$('emp-valor').value='300,00';$('emp-parcelas').value='3';$('emp-mes').value='2027-01';salvarEmprestimo();`);
+    confere('cobrar nas contas: 3 lançamentos no nome dela', no(`S.lancamentos.filter(l=>l.grupoId&&l.grupoId.indexOf('EMP-')===0).map(l=>[l.mesChave,l.valor,l.responsavel,l.cartao])`),
+      [['2027-01',100,'Cindhy Medeiros','Sem cartão'],['2027-02',100,'Cindhy Medeiros','Sem cartão'],['2027-03',100,'Cindhy Medeiros','Sem cartão']]);
+    confere('cobrar nas contas: saldo do empréstimo baixa', no(`saldoEmprestimo('Cindhy Medeiros').saldo`), 100);
+    confere('cobrar nas contas: fila manda lançamentos e o registro', no(`outbox.map(o=>o.acao)`), ['addLancamentos','salvarEmprestimo']);
+    no(`window.confirm=()=>true;removerEmprestimo(S.emprestimos.find(e=>e.tipo==='cobrado').id);`);
+    confere('desfazer a cobrança apaga os lançamentos', no(`[S.lancamentos.filter(l=>String(l.grupoId).indexOf('EMP-')===0).length,saldoEmprestimo('Cindhy Medeiros').saldo]`), [0,400]);
+    no(`renderEmprestimos()`);
+    confere('empréstimo: cartão mostra quem deve', no(`/Empréstimos/.test(document.getElementById('emp-corpo').textContent)||document.getElementById('emp-corpo').textContent.includes('Te devem')`), true);
+    no(`S.emprestimos=[];outbox=[];`);
+
+    // fechar o mês e meses comprometidos rodam sem erro
+    no(`renderFechamento('2026-11');renderFuturo('2026-11');`);
+    confere('fechar o mês: lista os passos', no(`document.querySelectorAll('#fechar-corpo .fechar-passo').length>0`), true);
+    confere('fixa projetada nos próximos meses', no(`(()=>{S.recorrentes=[{id:'r9',desc:'Netflix',valor:44.9,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Lanches',mesInicio:'2026-01',mesFim:'',ativa:true}];renderFuturo('2026-11');const t=document.querySelector('#chart-futuro .col').getAttribute('data-tip');S.recorrentes=[];return t.includes('Fixas: ')&&t.split('Fixas: ')[1].includes('44,90')})()`), true);
 
     // fila offline: criar e apagar antes de enviar não manda nada
     no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);

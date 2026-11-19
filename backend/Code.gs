@@ -68,12 +68,16 @@ const SHEET_CATEGORIAS  = 'Categorias';
 const SHEET_CARTOES     = 'Cartoes';
 const SHEET_RECORRENTES = 'Recorrentes';
 const SHEET_ACERTOS     = 'Acertos';
+const SHEET_EMPRESTIMOS = 'Emprestimos';
 
 const COLUNAS_LANCAMENTOS = ['id','descricao','mes','valor','responsavel','cartao','categoria','parcelas','parcela_atual','grupo_id','pago','pago_em'];
 const COLUNAS_RECORRENTES = ['id','descricao','valor','responsavel','cartao','categoria','mes_inicio','mes_fim','ativa','ultimo_mes'];
 const COLUNAS_CATEGORIAS  = ['id','nome','limite','icone'];
 const COLUNAS_CARTOES     = ['id','nome','fechamento','vencimento'];
-const COLUNAS_ACERTOS     = ['mes','pessoa','valor','recebido_em'];
+const COLUNAS_ACERTOS     = ['mes','pessoa','valor','recebido_em','perdoado'];
+// Empréstimos: só o administrador logado lê (o link pessoal nunca vê esta aba).
+// tipo: emprestei | devolveu | cobrado (virou lançamento nas contas da pessoa)
+const COLUNAS_EMPRESTIMOS = ['id','pessoa','data','descricao','valor','tipo','grupo_id'];
 
 const PREFIXO_REC          = 'REC-';
 const MAX_MESES_GERADOS    = 240;  // trava de segurança por regra (20 anos)
@@ -94,10 +98,12 @@ const ACOES_ESCRITA = [
   'marcarPagos','upsertReceita','addPessoa','removerPessoa','regenerarToken',
   'addCategoria','removerCategoria','definirOrcamento','addCartao','removerCartao',
   'addRecorrente','addRecorrentes','updateRecorrente','removerRecorrente',
-  'limparDados','sincronizar','definirCartao','definirIcone','marcarAcerto'
+  'limparDados','sincronizar','definirCartao','definirIcone','marcarAcerto',
+  'salvarEmprestimo','removerEmprestimo'
 ];
 // O que a fila offline do app pode mandar dentro de `sincronizar`.
-const ACOES_FILA = ['addLancamentos','updateLancamento','deleteLancamentos','marcarPagos','upsertReceita','marcarAcerto'];
+const ACOES_FILA = ['addLancamentos','updateLancamento','deleteLancamentos','marcarPagos','upsertReceita','marcarAcerto',
+                    'salvarEmprestimo','removerEmprestimo'];
 
 // ═══════════════════════════════════════════════════════════
 //  SETUP (rodar manualmente pelo editor)
@@ -111,10 +117,12 @@ function setupPlanilha() {
   criarAba(ss, SHEET_CARTOES,     COLUNAS_CARTOES);
   criarAba(ss, SHEET_ACERTOS,     COLUNAS_ACERTOS);
   criarAba(ss, SHEET_RECORRENTES, COLUNAS_RECORRENTES);
+  criarAba(ss, SHEET_EMPRESTIMOS, COLUNAS_EMPRESTIMOS);
   // Abas que já existiam ganham as colunas novas sem perder nada.
   garantirColunas(SHEET_LANCAMENTOS, COLUNAS_LANCAMENTOS);
   garantirColunas(SHEET_CATEGORIAS,  COLUNAS_CATEGORIAS);
   garantirColunas(SHEET_CARTOES,     COLUNAS_CARTOES);
+  garantirColunas(SHEET_ACERTOS,     COLUNAS_ACERTOS);
   avisar('Planilha configurada com sucesso!');
 }
 
@@ -163,7 +171,10 @@ function criarAba(ss, nome, cabecalhos) {
     sheet.getRange('B2:B').setNumberFormat('0.00');
   } else if (nome === SHEET_ACERTOS) {
     sheet.getRangeList(['A2:B', 'D2:D']).setNumberFormat('@');
-    sheet.getRange('C2:C').setNumberFormat('0.00');
+    sheet.getRangeList(['C2:C', 'E2:E']).setNumberFormat('0.00');
+  } else if (nome === SHEET_EMPRESTIMOS) {
+    sheet.getRangeList(['A2:D', 'F2:G']).setNumberFormat('@');
+    sheet.getRange('E2:E').setNumberFormat('0.00');
   } else if (nome === SHEET_RECORRENTES) {
     sheet.getRangeList(['A2:B', 'D2:J']).setNumberFormat('@');
     sheet.getRange('C2:C').setNumberFormat('0.00');
@@ -359,7 +370,9 @@ function executarAcao(acao, body, travado) {
     case 'removerCartao':      return removerLinha(SHEET_CARTOES, body.id);
     case 'definirCartao':      return definirCartao(body.id, body.fechamento, body.vencimento);
     case 'definirIcone':       return definirIcone(body.id, body.icone);
-    case 'marcarAcerto':       return marcarAcerto(body.mes, body.pessoa, body.valor, body.recebido);
+    case 'marcarAcerto':       return marcarAcerto(body.mes, body.pessoa, body.valor, body.recebido, body.perdoado);
+    case 'salvarEmprestimo':   return salvarEmprestimo(body.item);
+    case 'removerEmprestimo':  return removerEmprestimo(body.id);
     case 'addRecorrente':      return addRecorrente(body, travado);
     case 'addRecorrentes':     return addRecorrentes(body.itens, travado);
     case 'updateRecorrente':   return updateRecorrente(body, travado);
@@ -554,6 +567,7 @@ function carregarTudo() {
     cartoes:     lerAba(SHEET_CARTOES),
     recorrentes: lerAbaOpcional(SHEET_RECORRENTES),
     acertos:     lerAbaOpcional(SHEET_ACERTOS),
+    emprestimos: lerAbaOpcional(SHEET_EMPRESTIMOS),
     usuario:     PropertiesService.getScriptProperties().getProperty('ADMIN_USUARIO') || '',
     servidorEm:  new Date().toISOString()
   };
@@ -981,13 +995,14 @@ function definirIcone(id, icone) {
 
 /* Acerto do mês: marca que a pessoa já te pagou a parte dela naquele mês
    (recebido = true) ou desfaz. Uma linha por mês+pessoa. Idempotente. */
-function marcarAcerto(mes, pessoa, valor, recebido) {
+function marcarAcerto(mes, pessoa, valor, recebido, perdoado) {
   mes = formatarData(mes);
   if (!/^\d{4}-\d{2}-01$/.test(mes)) return { erro: 'Mês inválido: ' + mes, codigo: 400 };
   pessoa = String(pessoa || '').trim();
   if (!pessoa) return { erro: 'Pessoa não informada.', codigo: 400 };
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss.getSheetByName(SHEET_ACERTOS)) criarAba(ss, SHEET_ACERTOS, COLUNAS_ACERTOS);
+  garantirColunas(SHEET_ACERTOS, COLUNAS_ACERTOS); // planilhas antigas: sem "perdoado"
   const sheet = aba(SHEET_ACERTOS);
   const dados = sheet.getDataRange().getValues();
   let linha = 0;
@@ -998,12 +1013,39 @@ function marcarAcerto(mes, pessoa, valor, recebido) {
     if (linha) sheet.deleteRow(linha);
     return { ok: true };
   }
-  const valores = [[mes, texto(pessoa), arred(valor), hojeISO()]];
+  // perdoado: o que você decidiu não cobrar (não passa para o mês seguinte)
+  const valores = [[mes, texto(pessoa), arred(valor), hojeISO(), arred(perdoado)]];
   if (!linha) linha = sheet.getLastRow() + 1;
-  sheet.getRange(linha, 1, 1, 4).setNumberFormat('@');
+  sheet.getRange(linha, 1, 1, 5).setNumberFormat('@');
   sheet.getRange(linha, 3).setNumberFormat('0.00');
-  sheet.getRange(linha, 1, 1, 4).setValues(valores);
+  sheet.getRange(linha, 5).setNumberFormat('0.00');
+  sheet.getRange(linha, 1, 1, 5).setValues(valores);
   return { ok: true };
+}
+
+/* Empréstimos: grava (ou regrava, pelo id) um movimento. Idempotente. */
+function salvarEmprestimo(it) {
+  if (!it || !it.id || String(it.id).length > 64) return { erro: 'Empréstimo sem identificador.', codigo: 400 };
+  const tipos = ['emprestei', 'devolveu', 'cobrado'];
+  if (tipos.indexOf(String(it.tipo)) === -1) return { erro: 'Tipo inválido: ' + it.tipo, codigo: 400 };
+  const v = Number(it.valor);
+  if (!isFinite(v) || v <= 0) return { erro: 'Valor inválido: ' + it.valor, codigo: 400 };
+  if (!String(it.pessoa || '').trim()) return { erro: 'Pessoa não informada.', codigo: 400 };
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(String(it.data || '')) ? String(it.data) : hojeISO();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(SHEET_EMPRESTIMOS)) criarAba(ss, SHEET_EMPRESTIMOS, COLUNAS_EMPRESTIMOS);
+  const sheet = aba(SHEET_EMPRESTIMOS);
+  let linha = indiceDeIds(sheet)[String(it.id)];
+  if (!linha) linha = sheet.getLastRow() + 1;
+  sheet.getRange(linha, 1, 1, 7).setNumberFormat('@');
+  sheet.getRange(linha, 5).setNumberFormat('0.00');
+  sheet.getRange(linha, 1, 1, 7).setValues([[String(it.id), texto(it.pessoa), data, texto(it.descricao || ''),
+    arred(v), String(it.tipo), texto(it.grupoId || '')]]);
+  return { ok: true };
+}
+function removerEmprestimo(id) {
+  if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_EMPRESTIMOS)) return { ok: true };
+  return removerLinha(SHEET_EMPRESTIMOS, id);
 }
 
 // ═══════════════════════════════════════════════════════════
