@@ -248,6 +248,46 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('fechar o mês: lista os passos', no(`document.querySelectorAll('#fechar-corpo .fechar-passo').length>0`), true);
     confere('fixa projetada nos próximos meses', no(`(()=>{S.recorrentes=[{id:'r9',desc:'Netflix',valor:44.9,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Lanches',mesInicio:'2026-01',mesFim:'',ativa:true}];renderFuturo('2026-11');const t=document.querySelector('#chart-futuro .col').getAttribute('data-tip');S.recorrentes=[];return t.includes('Fixas: ')&&t.split('Fixas: ')[1].includes('44,90')})()`), true);
 
+    // vencimento das contas sem cartão
+    confere('vencimento: dia 31 vira o último dia do mês', no(`[vencDesloc('2026-01-31',1),vencDesloc('2026-11-10',2),vencDesloc('x',1)]`), ['2026-02-28','2027-01-10','']);
+    confere('vencimento: parcelas sem cartão levam o mesmo dia',
+      no(`gerarParcelas('Móveis',11,2026,[100,100,100],'Fernando Lopes','Sem cartão','Casa',{n:3,p0:1,incluirPagas:false,venc:'2026-11-10'},'G1').map(l=>l.vencimento)`),
+      ['2026-11-10','2026-12-10','2027-01-10']);
+    confere('vencimento: no cartão não guarda data',
+      no(`gerarParcelas('TV',11,2026,[100,100],'Fernando Lopes','Nubank','Casa',{n:2,p0:1,incluirPagas:false,venc:'2026-11-10'},'G2').map(l=>l.vencimento)`), ['','']);
+    confere('vencimento: vai para a planilha só sem cartão',
+      no(`[paraAPI({id:'a',cartao:'Sem cartão',vencimento:'2026-12-05'}).vencimento,paraAPI({id:'b',cartao:'Nubank',vencimento:'2026-12-05'}).vencimento]`), ['2026-12-05','']);
+    confere('vencimento: lê da planilha', no(`[mapFromAPI({id:1,mes:'2026-11-01',vencimento:'2026-11-20'}).vencimento,mapFromAPI({id:2,mes:'2026-11-01'}).vencimento]`), ['2026-11-20','']);
+    confere('vencimento: atrasada, hoje e paga', no(`[estadoVenc({cartao:'Sem cartão',vencimento:vencDesloc(dataHoje(),-1)}).cls,
+      estadoVenc({cartao:'Sem cartão',vencimento:dataHoje()}).txt,
+      estadoVenc({cartao:'Sem cartão',pago:true,vencimento:vencDesloc(dataHoje(),-1)}).cls,
+      estadoVenc({cartao:'Nubank',vencimento:dataHoje()})]`), ['atrasada','vence hoje','',null]);
+    confere('a pagar: conta atrasada vem primeiro', no(`grupoPagamento([
+      {id:'p1',desc:'Mercado',valor:500,cartao:'Sem cartão',categoria:'X',responsavel:'Fernando Lopes',mesChave:chaveHoje()},
+      {id:'p2',desc:'Luz',valor:80,cartao:'Sem cartão',categoria:'X',responsavel:'Fernando Lopes',mesChave:chaveHoje(),vencimento:vencDesloc(dataHoje(),-2)}]).map(g=>[g.rotulo,g.atrasada])`),
+      [['Luz',true],['Mercado',false]]);
+    // editar a data numa parcela leva o dia para as seguintes
+    no(`for(let k=1;k<=3;k++)S.lancamentos.push({id:'vv'+k,desc:'Sofá',mesChave:chaveDesloc('2026-11',k-1),valor:100,responsavel:'Fernando Lopes',cartao:'Sem cartão',categoria:'Contas da casa',parcelas:3,parcelaAtual:k,grupoId:'vv',pago:false,vencimento:vencDesloc('2026-11-05',k-1)});
+      outbox=[];const it=S.lancamentos.find(l=>l.id==='vv1');editarParcelasSeguintes(it,{...it,vencimento:'2026-11-15'});`);
+    confere('vencimento: muda esta e as seguintes', no(`S.lancamentos.filter(l=>l.grupoId==='vv').sort((a,b)=>a.parcelaAtual-b.parcelaAtual).map(l=>l.vencimento)`), ['2026-11-15','2026-12-15','2027-01-15']);
+    confere('vencimento: fila manda a data', no(`outbox.filter(o=>o.acao==='updateLancamento').map(o=>o.dados.item.vencimento)`), ['2026-11-15','2026-12-15','2027-01-15']);
+    no(`S.lancamentos=S.lancamentos.filter(l=>l.grupoId!=='vv');outbox=[];`);
+    confere('fixa: dia do vencimento vai para a regra', no(`[recParaAPI({id:'r',cartao:'Sem cartão',mesInicio:'2026-11',diaVenc:10}).diaVenc,recParaAPI({id:'r',cartao:'Nubank',mesInicio:'2026-11',diaVenc:10}).diaVenc,mapRecFromAPI({id:'r',dia_vencimento:'12'}).diaVenc]`), [10,0,12]);
+
+    // contas que vão terminar
+    no(`S.lancamentos.push(
+      ...[1,2,3,4].map(k=>({id:'t1'+k,desc:'Geladeira',mesChave:chaveDesloc('2026-10',k-1),valor:200,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:4,parcelaAtual:k,grupoId:'T1',pago:k===1})),
+      ...[1,2].map(k=>({id:'t2'+k,desc:'Cama (Div.)',mesChave:chaveDesloc('2026-11',k-1),valor:50,responsavel:'Fernando Lopes',cartao:'Sem cartão',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T2-1',pago:false})),
+      ...[1,2].map(k=>({id:'t3'+k,desc:'Cama (Div.)',mesChave:chaveDesloc('2026-11',k-1),valor:50,responsavel:'Cindhy Medeiros',cartao:'Sem cartão',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T2-2',pago:false})),
+      ...[1,2].map(k=>({id:'t4'+k,desc:'Velha',mesChave:chaveDesloc('2026-08',k-1),valor:10,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T4',pago:true})));`);
+    confere('terminam: quando, quanto por mês e quanto falta (dividida conta uma vez)',
+      no(`contasQueTerminam('2026-11').filter(x=>['Geladeira','Cama','Velha'].includes(x.desc)).map(x=>[x.desc,x.fim,x.mensal,x.falta,x.restam])`),
+      [['Cama','2026-12',100,200,2],['Geladeira','2027-01',200,600,3]]);
+    confere('terminam: filtro de pessoa', no(`contasQueTerminam('2026-11','Cindhy Medeiros').filter(x=>x.desc==='Cama').map(x=>x.mensal)`), [50]);
+    no(`renderTermina('2026-11')`);
+    confere('terminam: card mostra os totais', no(`[$('card-termina').hidden,$('termina-kpis').textContent.includes('Falta pagar'),$('termina-lista').textContent.includes('Geladeira')]`), [false,true,true]);
+    no(`S.lancamentos=S.lancamentos.filter(l=>!/^t[1-4]/.test(l.id));`);
+
     // fila offline: criar e apagar antes de enviar não manda nada
     no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);
     confere('fila: apagado antes de enviar some', no('outbox.map(o=>o.acao+":"+(o.dados.itens||o.dados.ids).map(i=>i.id||i).join(","))'), ['addLancamentos:z2']);

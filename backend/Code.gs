@@ -70,8 +70,12 @@ const SHEET_RECORRENTES = 'Recorrentes';
 const SHEET_ACERTOS     = 'Acertos';
 const SHEET_EMPRESTIMOS = 'Emprestimos';
 
-const COLUNAS_LANCAMENTOS = ['id','descricao','mes','valor','responsavel','cartao','categoria','parcelas','parcela_atual','grupo_id','pago','pago_em'];
-const COLUNAS_RECORRENTES = ['id','descricao','valor','responsavel','cartao','categoria','mes_inicio','mes_fim','ativa','ultimo_mes'];
+// vencimento: AAAA-MM-DD, só para conta sem cartão (cartão usa o vencimento da fatura)
+const COLUNAS_LANCAMENTOS = ['id','descricao','mes','valor','responsavel','cartao','categoria','parcelas','parcela_atual','grupo_id','pago','pago_em','vencimento'];
+// dia_vencimento: dia do mês em que a conta fixa vence (0 = sem data)
+const COLUNAS_RECORRENTES = ['id','descricao','valor','responsavel','cartao','categoria','mes_inicio','mes_fim','ativa','ultimo_mes','dia_vencimento'];
+// O app lê este número para saber o que o servidor já sabe guardar.
+const VERSAO_SERVIDOR = 3;
 const COLUNAS_CATEGORIAS  = ['id','nome','limite','icone'];
 const COLUNAS_CARTOES     = ['id','nome','fechamento','vencimento'];
 const COLUNAS_ACERTOS     = ['mes','pessoa','valor','recebido_em','perdoado'];
@@ -120,6 +124,7 @@ function setupPlanilha() {
   criarAba(ss, SHEET_EMPRESTIMOS, COLUNAS_EMPRESTIMOS);
   // Abas que já existiam ganham as colunas novas sem perder nada.
   garantirColunas(SHEET_LANCAMENTOS, COLUNAS_LANCAMENTOS);
+  garantirColunas(SHEET_RECORRENTES, COLUNAS_RECORRENTES);
   garantirColunas(SHEET_CATEGORIAS,  COLUNAS_CATEGORIAS);
   garantirColunas(SHEET_CARTOES,     COLUNAS_CARTOES);
   garantirColunas(SHEET_ACERTOS,     COLUNAS_ACERTOS);
@@ -144,7 +149,7 @@ function garantirColunas(nomeAba, colunas) {
     mudou = true;
   }
   if (mudou) {
-    if (nomeAba === SHEET_LANCAMENTOS) sheet.getRange('K2:L').setNumberFormat('@');
+    if (nomeAba === SHEET_LANCAMENTOS) sheet.getRange('K2:M').setNumberFormat('@');
     if (nomeAba === SHEET_CATEGORIAS) sheet.getRange('C2:C').setNumberFormat('0.00');
   }
   return mudou;
@@ -161,7 +166,7 @@ function criarAba(ss, nome, cabecalhos) {
   // Colunas de texto precisam ser TEXTO: senão o Sheets transforma o mês em
   // data (que escorrega conforme o fuso) e uma descrição "3/4" também.
   if (nome === SHEET_LANCAMENTOS) {
-    sheet.getRangeList(['A2:C', 'E2:G', 'J2:L']).setNumberFormat('@');
+    sheet.getRangeList(['A2:C', 'E2:G', 'J2:M']).setNumberFormat('@');
     sheet.getRange('D2:D').setNumberFormat('0.00');
   } else if (nome === SHEET_CATEGORIAS) {
     sheet.getRange('A2:B').setNumberFormat('@');
@@ -568,6 +573,7 @@ function carregarTudo() {
     recorrentes: lerAbaOpcional(SHEET_RECORRENTES),
     acertos:     lerAbaOpcional(SHEET_ACERTOS),
     emprestimos: lerAbaOpcional(SHEET_EMPRESTIMOS),
+    versao:      VERSAO_SERVIDOR,
     usuario:     PropertiesService.getScriptProperties().getProperty('ADMIN_USUARIO') || '',
     servidorEm:  new Date().toISOString()
   };
@@ -582,7 +588,7 @@ function acessoPorToken(token) {
     return l.responsavel === pessoa.nome;
   }).map(function (l) {
     return { descricao: l.descricao, mes: l.mes, valor: l.valor, cartao: l.cartao, categoria: l.categoria,
-             parcelas: l.parcelas, parcela_atual: l.parcela_atual, pago: l.pago };
+             parcelas: l.parcelas, parcela_atual: l.parcela_atual, pago: l.pago, vencimento: l.vencimento || '' };
   });
   return {
     nome: pessoa.nome,
@@ -628,11 +634,12 @@ function addLancamentos(itens) {
       texto(it.id), texto(it.desc), texto(it.mesDate), arred(it.valor), texto(it.responsavel),
       texto(it.cartao), texto(it.categoria), parseInt(it.parcelas, 10) || 1,
       parseInt(it.parcelaAtual, 10) || 1, texto(it.grupoId || it.id),
-      it.pago ? 'sim' : '', it.pago ? (dataValida(it.pagoEm) || hojeISO()) : ''
+      it.pago ? 'sim' : '', it.pago ? (dataValida(it.pagoEm) || hojeISO()) : '',
+      vencimentoValido(it.vencimento)
     ];
   });
   const inicio = sheet.getLastRow() + 1, fim = inicio + linhas.length - 1;
-  sheet.getRangeList(['A' + inicio + ':C' + fim, 'E' + inicio + ':G' + fim, 'J' + inicio + ':L' + fim])
+  sheet.getRangeList(['A' + inicio + ':C' + fim, 'E' + inicio + ':G' + fim, 'J' + inicio + ':M' + fim])
        .setNumberFormat('@');
   sheet.getRange(inicio, 1, linhas.length, COLUNAS_LANCAMENTOS.length).setValues(linhas);
   return { ok: true, gravados: linhas.length };
@@ -675,6 +682,11 @@ function updateLancamento(item) {
     texto(item.desc), texto(item.mesDate), arred(item.valor),
     texto(item.responsavel), texto(item.cartao), texto(item.categoria)
   ]]);
+  // App antigo não manda o campo: aí a data que já estava fica como está.
+  if (item.vencimento !== undefined) {
+    garantirColunasLancamentos();
+    sheet.getRange(linha, 13).setNumberFormat('@').setValue(vencimentoValido(item.vencimento));
+  }
   return { ok: true };
 }
 
@@ -749,7 +761,13 @@ function linhaRecorrente(it) {
 function abaRecorrentes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss.getSheetByName(SHEET_RECORRENTES)) criarAba(ss, SHEET_RECORRENTES, COLUNAS_RECORRENTES);
+  garantirColunas(SHEET_RECORRENTES, COLUNAS_RECORRENTES); // planilhas antigas: sem dia_vencimento
   return aba(SHEET_RECORRENTES);
+}
+function diaVencimento(it) {
+  if (it.cartao && it.cartao !== 'Sem cartão') return '';
+  const d = parseInt(it.diaVenc, 10);
+  return d >= 1 && d <= 31 ? String(d) : '';
 }
 
 function addRecorrente(item, travado) {
@@ -777,8 +795,9 @@ function addRecorrentes(itens, travado) {
     if (linha) {
       sheet.getRange(linha, 3).setNumberFormat('0.00');
       sheet.getRange(linha, 2, 1, 8).setValues([linhaRecorrente(it).slice(1)]);
+      sheet.getRange(linha, 11).setNumberFormat('@').setValue(diaVencimento(it));
     } else {
-      novos.push(linhaRecorrente(it).concat(['']));  // ultimo_mes: nada gerado ainda
+      novos.push(linhaRecorrente(it).concat(['', diaVencimento(it)]));  // ultimo_mes: nada gerado ainda
     }
   });
   if (novos.length) {
@@ -800,6 +819,7 @@ function updateRecorrente(item, travado) {
   sheet.getRange(linha, 3).setNumberFormat('0.00');
   // Colunas 2..9: ultimo_mes (10) não é mexido — o que já foi gerado, fica.
   sheet.getRange(linha, 2, 1, 8).setValues([linhaRecorrente(item).slice(1)]);
+  if (item.diaVenc !== undefined) sheet.getRange(linha, 11).setNumberFormat('@').setValue(diaVencimento(item));
   const gerados = materializarRecorrentes(!travado);
   return { ok: true, gerados: gerados };
 }
@@ -845,6 +865,8 @@ function planejarRecorrentes(regras, hoje) {
     if (fim && fim < ate) ate = fim;
     if (de > ate) return;
 
+    const semCartao = !r.cartao || r.cartao === 'Sem cartão';
+    const dia = semCartao ? parseInt(r.dia_vencimento, 10) : 0;
     let cursor = de, criadoAte = null, guarda = 0;
     while (cursor <= ate && guarda++ < MAX_MESES_GERADOS) {
       pendentes.push({
@@ -852,7 +874,8 @@ function planejarRecorrentes(regras, hoje) {
         desc: r.descricao, mesDate: cursor + '-01', valor: valor,
         responsavel: r.responsavel, cartao: r.cartao || 'Sem cartão',
         categoria: r.categoria, parcelas: 1, parcelaAtual: 1,
-        grupoId: PREFIXO_REC + r.id
+        grupoId: PREFIXO_REC + r.id,
+        vencimento: dia >= 1 && dia <= 31 ? diaNoMes(cursor, dia) : ''
       });
       criadoAte = cursor;
       cursor = mesSeguinte(cursor);
@@ -1115,6 +1138,31 @@ function lembreteDiario() {
     }
   });
 
+  // contas sem cartão com data de vencimento: hoje, amanhã ou depois de amanhã
+  const hojeTxt = Utilities.formatDate(hoje, tz, 'yyyy-MM-dd');
+  const vencendo = lanc.filter(function (l) {
+    if ((l.cartao && l.cartao !== 'Sem cartão') || !pendente(l)) return false;
+    const v = vencimentoValido(formatarData(l.vencimento));
+    if (!v) return false;
+    const dias = Math.round((new Date(v + 'T12:00:00') - new Date(hojeTxt + 'T12:00:00')) / 864e5);
+    l._dias = dias;
+    return dias >= 0 && dias <= 2 && !props.getProperty('LEMBRETE_V_' + l.id + '_' + v);
+  });
+  if (vencendo.length) {
+    const porConta = {};
+    vencendo.forEach(function (l) {
+      const nome = String(l.descricao).replace(/\s*\(Div\.\)\s*$/, '');
+      const k = nome + '|' + l._dias;
+      porConta[k] = porConta[k] || { nome: nome, dias: l._dias, valor: 0 };
+      porConta[k].valor += Number(l.valor || 0);
+      props.setProperty('LEMBRETE_V_' + l.id + '_' + vencimentoValido(formatarData(l.vencimento)), '1');
+    });
+    blocos.push('📅 Contas que vencem:\n' + Object.keys(porConta).map(function (k) {
+      const c = porConta[k];
+      return '   • ' + c.nome + ' — ' + (c.dias === 0 ? 'HOJE' : c.dias === 1 ? 'amanhã' : 'em 2 dias') + ': ' + fmtR(c.valor);
+    }).join('\n'));
+  }
+
   // dia 1º: contas sem cartão do mês
   if (hoje.getDate() === 1) {
     const chaveMes = Utilities.formatDate(hoje, tz, 'yyyy-MM');
@@ -1252,6 +1300,22 @@ function dataValida(v) {
   if (d.getTime() > Date.now() + 864e5) return '';
   if (+m[1] < 2000) return '';
   return s;
+}
+
+/* Data de vencimento: "AAAA-MM-DD" de verdade (pode ser no futuro); senão ''. */
+function vencimentoValido(v) {
+  const s = String(v || '');
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m || +m[1] < 2000 || +m[1] > 2100) return '';
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return '';
+  return s;
+}
+/* "AAAA-MM" + dia → "AAAA-MM-DD"; dia 31 vira o último dia em meses curtos. */
+function diaNoMes(chave, dia) {
+  const p = String(chave).split('-');
+  const ultimo = new Date(Date.UTC(+p[0], +p[1], 0)).getUTCDate();
+  return chave + '-' + ('0' + Math.min(dia, ultimo)).slice(-2);
 }
 
 /* A checagem das colunas novas roda no máximo uma vez por requisição. */

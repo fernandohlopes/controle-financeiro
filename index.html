@@ -610,6 +610,20 @@ details.filtros-box[open]>summary::after{content:'−'}
 .fechar-passo small{display:block;color:var(--text3);font-size:.74rem}
 .fechar-marca{width:16px;text-align:center;color:var(--text3)}
 .fechar-passo.ok{color:var(--text3)}.fechar-passo.ok .fechar-marca{color:var(--green)}
+.termina-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 10px}
+.termina-kpi{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0}
+.termina-kpi .kpi-lab{font-size:.56rem}
+.termina-kpi b{display:block;font-size:1.05rem;font-weight:600;color:var(--text);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.termina-kpi small{display:block;font-size:.7rem;color:var(--text3);margin-top:2px}
+.termina-kpi.forte b{color:var(--green)}
+@media(max-width:480px){.termina-kpis{grid-template-columns:1fr 1fr}.termina-kpis .termina-kpi:last-child{grid-column:1/-1}}
+.termina-mais>summary{cursor:pointer;font-size:.8rem;color:var(--text3);padding:8px 2px;list-style:none}
+.termina-mais>summary::-webkit-details-marker{display:none}
+.termina-falta{display:block;font-size:.7rem;color:var(--text3);text-align:right;margin-top:3px}
+.venc-tag{font-style:normal;margin-left:6px;color:var(--text3)}
+.venc-tag.perto{color:var(--amber)}.venc-tag.atrasada{color:var(--red)}
+.chip.st-atrasada{background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.3)}
+.edit-venc{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--text3)}
 .termina-tit{font-size:.74rem;color:var(--text3);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
 .imp-fixa{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text2);margin-top:4px;width:100%}
 .imp-fixas-falta{font-size:.78rem;color:var(--text2);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0}
@@ -770,6 +784,8 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
   #lista-extrato .grupo-mes{padding:16px 14px 6px}
   #lista-extrato .lanc>*{grid-area:auto!important}
   #lista-extrato .lanc-meta{display:contents}
+  /* conta sem cartão com data: o vencimento vai numa segunda linha da coluna */
+  #lista-extrato .lanc .lanc-meta .chip .venc-tag{display:block;margin:1px 0 0;font-size:.72rem;white-space:nowrap}
   #lista-extrato .lanc-meta>*{min-width:0;max-width:100%;justify-self:start;overflow:hidden;text-overflow:ellipsis}
   #lista-extrato.sem-mes .chip-mes{display:inline-flex}
   #lista-extrato .lanc-valor{font-size:.95rem;text-align:right}
@@ -1013,6 +1029,12 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
       <div class="kpi-delta" id="var-futuro"></div>
     </div>
 
+    <div class="card" id="card-termina">
+      <div class="card-label">Contas que vão terminar <span class="card-dica">parcelamentos e financiamentos</span></div>
+      <div class="termina-kpis" id="termina-kpis"></div>
+      <div class="settings-list" id="termina-lista"></div>
+    </div>
+
     <div class="card span-8">
       <div class="card-head">
         <div class="card-label">Evolução — gastos e receita</div>
@@ -1071,7 +1093,6 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
       </div>
       <div class="grafico" id="chart-futuro"></div>
       <div class="nota" id="nota-futuro"></div>
-      <div class="settings-list" id="lista-termina"></div>
     </div>
 
     <div class="card span-6">
@@ -1205,6 +1226,11 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
             <label for="cartao">Cartão *</label>
             <select id="cartao" class="inp"><option value="" disabled selected>Escolha...</option></select>
             <span class="error-msg">Selecione o cartão</span>
+          </div>
+          <div class="field" id="field-venc" style="display:none">
+            <label for="vencimento">Data de vencimento</label>
+            <input type="date" id="vencimento" class="inp">
+            <span class="field-hint" id="hint-venc">Opcional. Parcelada ou fixa: o mesmo dia nos meses seguintes.</span>
           </div>
           <div class="field">
             <label for="is_dividida">Conta dividida?</label>
@@ -1571,6 +1597,30 @@ const chaveHoje=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getM
 /* Data de hoje no fuso do aparelho. toISOString() é UTC: no Brasil,
    depois das 21h ela já devolvia o dia seguinte. */
 const dataHoje=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;};
+/* ── VENCIMENTO (contas sem cartão) ──
+   Guardado em cada lançamento como AAAA-MM-DD. Parcelada: o mesmo dia nos
+   meses seguintes (dia 31 vira o último dia em meses mais curtos). */
+const ehDataISO=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||''));
+const semCartaoL=l=>!l.cartao||l.cartao==='Sem cartão';
+function vencDesloc(iso,n){
+  if(!ehDataISO(iso))return'';
+  const [a,m,d]=iso.split('-').map(Number), t=new Date(a,m-1+n,1);
+  const ult=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
+  return `${t.getFullYear()}-${pad2(t.getMonth()+1)}-${pad2(Math.min(d,ult))}`;
+}
+const diasAte=iso=>Math.round((new Date(iso+'T12:00:00')-new Date(dataHoje()+'T12:00:00'))/864e5);
+const diaMes=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
+/* estado do vencimento de um lançamento: null (sem data) ou {txt,cls,dias} */
+function estadoVenc(l){
+  if(!semCartaoL(l)||!ehDataISO(l.vencimento))return null;
+  const d=diasAte(l.vencimento), dm=diaMes(l.vencimento);
+  if(l.pago)return{txt:`vence ${dm}`,cls:'',dias:d};
+  if(d<0)return{txt:`venceu ${dm}`,cls:'atrasada',dias:d};
+  if(d===0)return{txt:'vence hoje',cls:'perto',dias:d};
+  if(d<=3)return{txt:`vence ${dm} · em ${d} dia${d>1?'s':''}`,cls:'perto',dias:d};
+  return{txt:`vence ${dm}`,cls:'',dias:d};
+}
+const tagVenc=l=>{const e=estadoVenc(l);return e?`<i class="venc-tag ${e.cls}">${esc(e.txt)}</i>`:'';};
 const dateParaBanco=(m,a)=>{const mm=parseInt(m,10),aa=parseInt(a,10);return (isNaN(mm)||isNaN(aa)||mm<1||mm>12)?null:`${aa}-${pad2(mm)}-01`;};
 function proximoMes(m,a,off){const d=new Date(a,m-1+off,1);return{mes:d.getMonth()+1,ano:d.getFullYear()};}
 
@@ -1823,7 +1873,7 @@ function aplicarDados(data){
   S.recorrentes=(data.recorrentes||[]).map(mapRecFromAPI);
   S.acertos=(data.acertos||[]).map(a=>({mes:normalizarMesChave(a.mes),pessoa:String(a.pessoa||''),valor:Number(a.valor)||0,recebidoEm:String(a.recebido_em||'').slice(0,10),perdoado:Number(a.perdoado)||0}));
   // Code.gs novo devolve "emprestimos" (mesmo vazio): só então empréstimos e "não cobrar" gravam
-  S.servidorV=Array.isArray(data.emprestimos)?2:1;
+  S.servidorV=Number(data.versao)>=3?Number(data.versao):(Array.isArray(data.emprestimos)?2:1);
   S.emprestimos=(data.emprestimos||[]).map(empDaAPI);
   S.atualizadoEm=Date.now();
   if(data.usuario&&SESSAO&&SESSAO.usuario!==data.usuario){SESSAO.usuario=data.usuario;salvarSessao(SESSAO);}
@@ -1836,12 +1886,13 @@ function mapFromAPI(r){
     parcelas:parseInt(r.parcelas,10)||1,parcelaAtual:parseInt(r.parcela_atual,10)||1,
     grupoId:String(r.grupo_id||r.id),
     pago:String(r.pago==null?'':r.pago).trim().toLowerCase()==='sim',
-    pagoEm:String(r.pago_em||'').substring(0,10)};
+    pagoEm:String(r.pago_em||'').substring(0,10),
+    vencimento:ehDataISO(String(r.vencimento||'').slice(0,10))?String(r.vencimento).slice(0,10):''};
 }
 const paraAPI=i=>({id:i.id,desc:i.desc,mesDate:i.mesChave+'-01',valor:i.valor,
   responsavel:i.responsavel,cartao:i.cartao,categoria:i.categoria,
   parcelas:i.parcelas,parcelaAtual:i.parcelaAtual,grupoId:i.grupoId,
-  pago:!!i.pago,pagoEm:i.pagoEm||''});
+  pago:!!i.pago,pagoEm:i.pagoEm||'',vencimento:semCartaoL(i)?(i.vencimento||''):''});
 /* Cobranças fixas: a regra vive na aba Recorrentes; o lançamento de cada
    mês é materializado pelo servidor e chega como lançamento comum. */
 function mapRecFromAPI(r){
@@ -1849,11 +1900,13 @@ function mapRecFromAPI(r){
     responsavel:String(r.responsavel||''),cartao:String(r.cartao||'Sem cartão'),
     categoria:String(r.categoria||''),mesInicio:normalizarMesChave(r.mes_inicio),
     mesFim:normalizarMesChave(r.mes_fim),ultimoMes:normalizarMesChave(r.ultimo_mes),
-    ativa:String(r.ativa==null?'sim':r.ativa).toLowerCase()!=='nao'};
+    ativa:String(r.ativa==null?'sim':r.ativa).toLowerCase()!=='nao',
+    diaVenc:Math.min(31,Math.max(0,parseInt(r.dia_vencimento,10)||0))};
 }
 const recParaAPI=r=>({id:r.id,desc:r.desc,valor:r.valor,responsavel:r.responsavel,
   cartao:r.cartao,categoria:r.categoria,mesInicio:r.mesInicio+'-01',
-  mesFim:r.mesFim?r.mesFim+'-01':'',ativa:!!r.ativa});
+  mesFim:r.mesFim?r.mesFim+'-01':'',ativa:!!r.ativa,
+  diaVenc:(!r.cartao||r.cartao==='Sem cartão')?(r.diaVenc||0):0});
 
 /* Aplica local + enfileira + tenta enviar. Nunca bloqueia a tela. */
 function mutar(aplicar,acao,dados){
@@ -2079,6 +2132,7 @@ function renderResumo(){
   renderOrcamento(A);
   renderTop(F);
   renderFuturo(chave,quem);
+  renderTermina(chave,quem);
 
   segmentos('seg-cartao',F.porCartao,S.cartoes,'Nenhum gasto neste mês.','cartao');
   segmentos('seg-pessoa',A.porPessoa,S.pessoas,'Nenhum gasto neste mês.','resp');
@@ -2514,13 +2568,16 @@ function grupoPagamento(itens){
     }else if(k){
       (divididas[k]=divididas[k]||[]).push(l);
     }else{
-      grupos.push({tipo:'conta',rotulo:l.desc,sub:`${l.responsavel} · ${l.categoria}`,itens:[l]});
+      const ev=estadoVenc(l);
+      grupos.push({tipo:'conta',rotulo:l.desc,sub:(ev?ev.txt+' · ':'')+`${l.responsavel} · ${l.categoria}`,itens:[l],
+        atrasada:!!(ev&&ev.dias<0&&!l.pago),vence:ev?l.vencimento:''});
     }
   });
   Object.values(divididas).forEach(g=>{
+    const cv=g.find(l=>estadoVenc(l)), ev=cv?estadoVenc(cv):null;
     grupos.push({tipo:'conta',rotulo:semDiv(g[0].desc),
-      sub:(g.length>1?'Dividida: ':'Parte de ')+g.map(l=>`${primeiroNome(l.responsavel)} ${fmt(l.valor)}`).join(' · ')+` · ${g[0].categoria}`,
-      itens:g});
+      sub:(ev?ev.txt+' · ':'')+(g.length>1?'Dividida: ':'Parte de ')+g.map(l=>`${primeiroNome(l.responsavel)} ${fmt(l.valor)}`).join(' · ')+` · ${g[0].categoria}`,
+      itens:g,atrasada:!!(ev&&ev.dias<0&&g.some(l=>!l.pago)),vence:ev?cv.vencimento:''});
   });
   Object.keys(porCartao).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(c=>{
     const g=porCartao[c];
@@ -2531,9 +2588,10 @@ function grupoPagamento(itens){
     grupos.push({tipo:'cartao',rotulo:'Fatura '+c,
       // com um item só, dizer "1 lançamento(s)" esconde justamente o que é
       sub:quando+(g.length===1?`${g[0].desc} · ${g[0].responsavel}`:`${g.length} lançamentos`),
-      itens:g});
+      itens:g,atrasada:!!(vence&&vence<hoje0&&g.some(l=>!l.pago))});
   });
-  return grupos.sort((a,z)=>somaValores(z.itens)-somaValores(a.itens));
+  // atrasadas primeiro; depois as de maior valor
+  return grupos.sort((a,z)=>(z.atrasada?1:0)-(a.atrasada?1:0)||somaValores(z.itens)-somaValores(a.itens));
 }
 function renderPagar(A){
   const el=$('lista-pagar');
@@ -2563,7 +2621,7 @@ function linhaPagamento(g,jaPago){
     <div class="lanc-ico" aria-hidden="true">${ic}</div>
     <div class="settings-item-info">
       <div class="settings-item-name">${esc(g.rotulo)}
-        ${jaPago?`<span class="chip st-pago${g.itens.some(i=>recemPagos.has(i.id))?' pop':''}">✓ pago</span>`:'<span class="chip st-pendente">pendente</span>'}</div>
+        ${jaPago?`<span class="chip st-pago${g.itens.some(i=>recemPagos.has(i.id))?' pop':''}">✓ pago</span>`:(g.atrasada?'<span class="chip st-atrasada">atrasada</span>':'<span class="chip st-pendente">pendente</span>')}</div>
       <div class="settings-item-sub">${esc(g.sub)} · <b style="color:var(--text2)">${fmt(total)}</b></div>
     </div>
     <div class="settings-item-actions">
@@ -2644,20 +2702,52 @@ function renderFuturo(chave,quem=null){
   $('nota-futuro').textContent=algo
     ? `${fmt(meses[0].partes[0].v+meses[0].partes[1].v)} já comprometidos em ${chaveExib(meses[0].k)}${dequem}. Fixas pelo valor de hoje.`
     : '';
-  // parcelamentos que terminam nos próximos 6 meses (e quanto liberam por mês)
-  const fim={};
+}
+
+/* ── CONTAS QUE VÃO TERMINAR ──
+   Cada compra parcelada (ou financiamento) que ainda tem parcela deste mês
+   em diante: quando termina, quanto libera por mês e quanto ainda falta.
+   Compra dividida conta uma vez só (as partes de quem está no filtro). */
+function contasQueTerminam(chave,quem=null){
+  const por={};
   S.lancamentos.forEach(l=>{
-    if(!(l.parcelas>1)||ehRecorrente(l)||(quem&&l.responsavel!==quem)||l.parcelaAtual!==l.parcelas)return;
-    if(l.mesChave<=chave||l.mesChave>chaveDesloc(chave,6))return;
-    const k=semDiv(l.desc)+'|'+l.mesChave+'|'+baseGrupo(l.grupoId);
-    const x=fim[k]=fim[k]||{desc:semDiv(l.desc),mes:l.mesChave,valor:0,cartao:l.cartao};x.valor=r2(x.valor+l.valor);
+    if(!(l.parcelas>1)||ehRecorrente(l)||(quem&&l.responsavel!==quem))return;
+    const k=baseGrupo(l.grupoId)+'|'+semDiv(l.desc)+'|'+l.parcelas;
+    (por[k]=por[k]||[]).push(l);
   });
-  const lista=Object.values(fim).sort((a,b)=>a.mes.localeCompare(b.mes)||b.valor-a.valor);
-  setHtml($('lista-termina'),lista.length?`<div class="termina-tit">Terminam em breve</div>`+lista.slice(0,6).map(x=>`<div class="settings-item termina-item">
+  const lista=[];
+  Object.values(por).forEach(g=>{
+    const fim=g.reduce((m,l)=>l.mesChave>m?l.mesChave:m,'');
+    if(fim<chave)return;
+    const ult=Math.max(...g.map(l=>l.parcelaAtual));
+    const abertas=g.filter(l=>!l.pago&&l.mesChave>=chave);
+    if(!abertas.length)return;
+    lista.push({desc:semDiv(g[0].desc),fim,cartao:g[0].cartao,parcelas:g[0].parcelas,
+      mensal:r2(somaValores(g.filter(l=>l.parcelaAtual===ult))),
+      falta:r2(somaValores(abertas)),
+      restam:new Set(abertas.map(l=>l.parcelaAtual)).size});
+  });
+  return lista.sort((a,b)=>a.fim.localeCompare(b.fim)||b.mensal-a.mensal);
+}
+function renderTermina(chave,quem=null){
+  const lista=contasQueTerminam(chave,quem), card=$('card-termina');
+  card.hidden=!lista.length;
+  if(!lista.length){setHtml($('termina-kpis'),'');setHtml($('termina-lista'),'');return;}
+  const ate=n=>lista.filter(x=>x.fim<=chaveDesloc(chave,n-1));
+  const tile=(lab,itens,forte)=>`<div class="termina-kpi${forte&&itens.length?' forte':''}"><div class="kpi-lab">${lab}</div>
+    <b>${itens.length?fmt(r2(itens.reduce((s,x)=>s+x.mensal,0))):'—'}</b>
+    <small>${itens.length?`por mês a menos · ${itens.length} conta${itens.length>1?'s':''}`:'nenhuma termina'}</small></div>`;
+  const falta=r2(lista.reduce((s,x)=>s+x.falta,0));
+  setHtml($('termina-kpis'),tile('Até '+chaveCurta(chaveDesloc(chave,2)),ate(3),true)
+    +tile('Até '+chaveCurta(chaveDesloc(chave,5)),ate(6),false)
+    +`<div class="termina-kpi"><div class="kpi-lab">Falta pagar</div><b>${fmt(falta)}</b>
+      <small>em ${lista.length} parcelamento${lista.length>1?'s':''} · ${fmt(r2(lista.reduce((s,x)=>s+x.mensal,0)))}/mês hoje</small></div>`);
+  const linha=x=>`<div class="settings-item termina-item">
       <div class="settings-item-info"><div class="settings-item-name">${esc(x.desc)}</div>
-      <div class="settings-item-sub">última parcela em ${esc(chaveExib(x.mes))} · ${esc(x.cartao)}</div></div>
-      <div class="settings-item-actions"><span class="chip st-pago">libera ${fmt(x.valor)}/mês</span></div></div>`).join('')
-    +(lista.length>6?`<div class="field-hint">e mais ${lista.length-6}</div>`:''):'');
+      <div class="settings-item-sub">${x.fim===chave?'termina este mês':'última em '+esc(chaveExib(x.fim))} · falta${x.restam>1?'m':''} ${x.restam} de ${x.parcelas} · ${esc(x.cartao)}</div></div>
+      <div class="settings-item-actions" style="flex-direction:column;align-items:flex-end;gap:0"><span class="chip st-pago">${fmt(x.mensal)}/mês</span><span class="termina-falta">falta ${fmt(x.falta)}</span></div></div>`;
+  setHtml($('termina-lista'),lista.slice(0,5).map(linha).join('')
+    +(lista.length>5?`<details class="termina-mais"><summary>Ver todas (${lista.length})</summary>${lista.slice(5).map(linha).join('')}</details>`:''));
 }
 
 /* ── EMPRÉSTIMOS (só você vê) ──
@@ -3006,6 +3096,10 @@ function togglePessoa(el){
 }
 function alternarCartao(){
   const usa=$('usa_cartao').value==='sim';
+  $('field-venc').style.display=usa?'none':'';
+  $('hint-venc').textContent=S.servidorV<3
+    ?'Para guardar o vencimento na planilha, atualize o Code.gs (veja o LEIAME).'
+    :'Opcional. Parcelada ou fixa: o mesmo dia nos meses seguintes.';
   $('field-cartao').style.opacity=usa?'1':'.4';
   $('cartao').disabled=!usa;
   $('cartao').value=usa?($('cartao').value||cartaoPadrao()):'';
@@ -3044,7 +3138,7 @@ function resetForm(){
   $('e_fixa').value='nao';$('fixa_tem_fim').value='nao';
   $('categoria').selectedIndex=0;
   $('responsavel_unico').value=pessoaPrincipal||'';
-  $('usa_cartao').value='sim';
+  $('usa_cartao').value='sim';$('vencimento').value='';
   $('cartao').disabled=false;
   $('cartao').value=cartaoPadrao();
   const hoje=new Date();
@@ -3063,7 +3157,8 @@ function gerarParcelas(desc,mes,ano,valores,resp,cartao,cat,op,grupoId){
   for(let i=de;i<=op.n;i++){
     const p=proximoMes(mes,ano,i-op.p0);
     itens.push({id:uid(),desc,mesChave:`${p.ano}-${pad2(p.mes)}`,valor:valores[i-1],
-      responsavel:resp,cartao,categoria:cat,parcelas:op.n,parcelaAtual:i,grupoId});
+      responsavel:resp,cartao,categoria:cat,parcelas:op.n,parcelaAtual:i,grupoId,
+      vencimento:op.venc&&(!cartao||cartao==='Sem cartão')?vencDesloc(op.venc,i-op.p0):''});
   }
   return itens;
 }
@@ -3075,6 +3170,7 @@ function prepararLancamento(){
   const cat=$('categoria').value, op=opcoesForm();
   const cartao=$('usa_cartao').value==='sim'?$('cartao').value:'Sem cartão';
   if(cartao!=='Sem cartão')store.set(K.ultCartao,cartao);
+  op.venc=cartao==='Sem cartão'&&ehDataISO($('vencimento').value)?$('vencimento').value:'';
   const base=uid().slice(0,8).toUpperCase();
   let criados=0;
   if($('is_dividida').value==='sim'){
@@ -3740,7 +3836,7 @@ function linhaLanc(l,{conferencia=false,pend=null}={}){
       <span class="chip chip-mes" title="${esc(chaveExib(l.mesChave))}">${esc(chaveMedia(l.mesChave))}</span>
       ${chipParcela(l.parcelaAtual,l.parcelas)}
       <span class="chip resp">${esc(primeiroNome(l.responsavel))}</span>
-      <span class="chip">${esc(l.cartao)}</span>
+      <span class="chip">${esc(l.cartao)}${tagVenc(l)}</span>
       <span class="chip chip-cat">${esc(l.categoria)}</span>
     </div>
     <div class="lanc-valor">${fmt(l.valor)}${conferencia?'':`<button class="st ${l.pago?'st-ok':'st-pend'}${recemPagos.has(l.id)?' pop':''}" data-act="alternar-pago" data-id="${esc(l.id)}" aria-label="${l.pago?'Pago — marcar como pendente':'Pendente — marcar como pago'}">${l.pago?'✓ pago':'pendente'}</button>`}</div>
@@ -3765,6 +3861,7 @@ function linhaEdicao(l){
       </div>
       <select id="e-resp" class="inp" aria-label="Responsável">${op(nomes(S.pessoas,l.responsavel),l.responsavel)}</select>
       <select id="e-car" class="inp" aria-label="Cartão">${op(nomes([...S.cartoes,{nome:'Sem cartão'}],l.cartao),l.cartao)}</select>
+      <label class="edit-venc" id="e-venc-box"${semCartaoL(l)?'':' hidden'}>Data de vencimento<input type="date" id="e-venc" class="inp" value="${esc(l.vencimento||'')}"></label>
       <select id="e-cat" class="inp" aria-label="Categoria">${op(nomes(S.categorias,l.categoria),l.categoria)}</select>
       <input type="text" id="e-val" class="inp" value="${fmtNum(l.valor)}" inputmode="decimal" autocomplete="off" aria-label="Valor" data-dinheiro>
       <details class="edit-div" id="e-div-box">
@@ -3785,7 +3882,7 @@ function linhaEdicao(l){
       </div>
     </div></div>`;
 }
-const CAMPOS_EDICAO=['e-desc','e-mes','e-ano','e-resp','e-car','e-cat','e-val'];
+const CAMPOS_EDICAO=['e-desc','e-mes','e-ano','e-resp','e-car','e-cat','e-val','e-venc'];
 /* ── ADIANTAR PARCELAS ──
    Quitou parcelas antes da hora (cartão, financiamento, empréstimo): as
    ÚLTIMAS parcelas em aberto saem dos meses seguintes e entram no mês em
@@ -3844,7 +3941,8 @@ function adiantarParcelas(id){
   const semCartao=!item.cartao||item.cartao==='Sem cartão', hoje=dataHoje(), mudancas=[];
   mover.forEach((g,i)=>{
     const cotas=dividirValor(porGrupo[i],g.length);
-    g.forEach((l,k)=>mudancas.push([l,{...l,mesChave:chave,valor:cotas[k],pago:semCartao?true:l.pago,pagoEm:semCartao?hoje:l.pagoEm}]));
+    g.forEach((l,k)=>mudancas.push([l,{...l,mesChave:chave,valor:cotas[k],pago:semCartao?true:l.pago,pagoEm:semCartao?hoje:l.pagoEm,
+      vencimento:l.vencimento?vencDesloc(l.vencimento,mesesEntre(l.mesChave,chave)):''}]));
   });
   editandoId=null;versaoLocal++;
   mudancas.forEach(([l,nv])=>Object.assign(l,nv));
@@ -3984,6 +4082,11 @@ async function salvarEdicao(id){
   }
   const novo={...item,desc,mesChave:chave,responsavel:$('e-resp').value,
     cartao:$('e-car').value,categoria:$('e-cat').value,valor};
+  // vencimento: só sem cartão. Mudou o mês e não mexeu na data? A data anda junto.
+  const vEl=$('e-venc'), vDig=vEl&&ehDataISO(vEl.value)?vEl.value:'';
+  novo.vencimento=semCartaoL(novo)?vDig:'';
+  if(novo.vencimento&&novo.vencimento===(item.vencimento||'')&&chave!==item.mesChave)
+    novo.vencimento=vencDesloc(novo.vencimento,mesesEntre(item.mesChave,chave));
   editandoId=null;
   if(item.parcelas>1&&!ehRecorrente(item))return editarParcelasSeguintes(item,novo);
   mutar(()=>Object.assign(item,novo),'updateLancamento',{item:paraAPI(novo)});
@@ -3998,10 +4101,15 @@ function editarParcelasSeguintes(item,novo){
   const desloc=mesesEntre(item.mesChave,novo.mesChave);
   const mudouValor=Math.abs(novo.valor-item.valor)>0.004;
   const seguintes=S.lancamentos.filter(l=>l.grupoId===item.grupoId&&l.parcelaAtual>item.parcelaAtual);
-  const mudancas=[[item,novo],...seguintes.map(s=>[s,{...s,desc:novo.desc,responsavel:novo.responsavel,
-    cartao:novo.cartao,categoria:novo.categoria,
-    mesChave:desloc?chaveDesloc(s.mesChave,desloc):s.mesChave,
-    valor:mudouValor?novo.valor:s.valor}])];
+  const mudouVenc=(novo.vencimento||'')!==(item.vencimento||'');
+  const mudancas=[[item,novo],...seguintes.map(s=>{
+    const mes=desloc?chaveDesloc(s.mesChave,desloc):s.mesChave;
+    const venc=!semCartaoL(novo)?''
+      :(mudouVenc?(novo.vencimento?vencDesloc(novo.vencimento,mesesEntre(novo.mesChave,mes)):'')
+      :(s.vencimento&&desloc?vencDesloc(s.vencimento,desloc):(s.vencimento||'')));
+    return [s,{...s,desc:novo.desc,responsavel:novo.responsavel,
+    cartao:novo.cartao,categoria:novo.categoria,mesChave:mes,
+    valor:mudouValor?novo.valor:s.valor,vencimento:venc}];})];
   // uma mutação só: um redesenho e um envio, mesmo num financiamento de 60 parcelas
   versaoLocal++;
   mudancas.forEach(([l,n])=>Object.assign(l,n));
@@ -4249,8 +4357,9 @@ async function salvarFixaDoFormulario(){
     : [$('responsavel_unico').value];
   const cotas=dividirValor(valor,pessoas.length);
   if(cotas.some(v=>!(v>0)))return toast('Valor pequeno demais para dividir entre essas pessoas','error');
+  const venc=$('vencimento').value, diaVenc=cartao==='Sem cartão'&&ehDataISO(venc)?parseInt(venc.slice(8,10),10):0;
   const regras=pessoas.map((nome,i)=>({id:uid(),desc:pessoas.length>1?desc+' (Div.)':desc,valor:cotas[i],
-    responsavel:nome,cartao,categoria:cat,mesInicio,mesFim,ultimoMes:'',ativa:true}));
+    responsavel:nome,cartao,categoria:cat,mesInicio,mesFim,ultimoMes:'',ativa:true,diaVenc}));
   /* Todas as cotas num pedido só: o servidor grava todas ou nenhuma. Antes
      era um pedido por pessoa, e uma falha no meio deixava só parte criada.
      Os ids vêm daqui, então a repetição automática não duplica nada. */
@@ -4274,15 +4383,16 @@ async function salvarFixaDoFormulario(){
    para os próximos meses (isto é, para a regra). */
 async function talvezAplicarAosProximos(item){
   const r=regraDe(item);if(!r)return;
+  const dia=semCartaoL(item)&&ehDataISO(item.vencimento)?parseInt(item.vencimento.slice(8,10),10):0;
   const mudou=r.desc!==item.desc||r.valor!==item.valor||r.responsavel!==item.responsavel
-    ||r.cartao!==item.cartao||r.categoria!==item.categoria;
+    ||r.cartao!==item.cartao||r.categoria!==item.categoria||(r.diaVenc||0)!==dia;
   if(!mudou)return;
   if(!confirm(`"${item.desc}" é uma cobrança fixa.\n\n`+
     `Aplicar esta alteração também aos PRÓXIMOS meses?\n\n`+
     `OK = os meses seguintes vêm com os dados novos.\n`+
     `Cancelar = a mudança vale só para ${chaveExib(item.mesChave)}.`))return;
   await gravarRecorrente({...r,desc:item.desc,valor:item.valor,responsavel:item.responsavel,
-    cartao:item.cartao,categoria:item.categoria},true,'Cobrança fixa atualizada');
+    cartao:item.cartao,categoria:item.categoria,diaVenc:dia},true,'Cobrança fixa atualizada');
 }
 /* Depois de excluir um lançamento fixo, oferece parar a cobrança. */
 async function talvezPararRecorrencia(l){
@@ -4690,7 +4800,7 @@ function renderLeitura(){
   $('leitura-lista').innerHTML=d.length?d.map(l=>`<div class="lanc leitura">
       <div class="lanc-desc">${esc(l.descricao)} ${ehPago(l)?'<span class="chip st-pago">✓ pago</span>':'<span class="chip st-pendente">pendente</span>'}</div>
       <div class="lanc-valor">${fmt(l.valor)}</div>
-      <div class="lanc-meta">${chipParcela(parseInt(l.parcela_atual,10)||1,parseInt(l.parcelas,10)||1)}${l.cartao?`<span class="chip">${esc(l.cartao)}</span>`:''}<span class="chip">${esc(l.categoria)}</span></div>
+      <div class="lanc-meta">${chipParcela(parseInt(l.parcela_atual,10)||1,parseInt(l.parcelas,10)||1)}${l.cartao?`<span class="chip">${esc(l.cartao)}${tagVenc({cartao:l.cartao,pago:ehPago(l),vencimento:String(l.vencimento||'').slice(0,10)})}</span>`:''}<span class="chip">${esc(l.categoria)}</span></div>
     </div>`).join('')
     :'<div class="empty-state"><span class="icon">◦</span><p>Nenhum lançamento neste mês.</p></div>';
 }
@@ -4890,6 +5000,9 @@ on('usa_cartao','change',()=>{alternarCartao();ajustarMesPelaFatura();atualizarF
 on('cartao','change',()=>{ajustarMesPelaFatura();atualizarFormParcelas();});
 ['mes_referencia','ano_referencia'].forEach(id=>on(id,'change',()=>{mesTocado=true;atualizarFormParcelas();}));
 on('is_dividida','change',alternarDivisao);
+document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='e-car'){const b=$('e-venc-box');if(b)b.hidden=e.target.value!=='Sem cartão';}
+});
 on('e_fixa','change',atualizarFormParcelas);
 on('fixa_tem_fim','change',atualizarFormParcelas);
 on('f_mes','change',()=>{filtroMesUsuario=$('f_mes').value;render();});
