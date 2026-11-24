@@ -610,20 +610,12 @@ details.filtros-box[open]>summary::after{content:'−'}
 .fechar-passo small{display:block;color:var(--text3);font-size:.74rem}
 .fechar-marca{width:16px;text-align:center;color:var(--text3)}
 .fechar-passo.ok{color:var(--text3)}.fechar-passo.ok .fechar-marca{color:var(--green)}
-.termina-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 10px}
-.termina-kpi{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0}
-.termina-kpi .kpi-lab{font-size:.56rem}
-.termina-kpi b{display:block;font-size:1.05rem;font-weight:600;color:var(--text);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.termina-kpi small{display:block;font-size:.7rem;color:var(--text3);margin-top:2px}
-.termina-kpi.forte b{color:var(--green)}
-@media(max-width:480px){.termina-kpis{grid-template-columns:1fr 1fr}.termina-kpis .termina-kpi:last-child{grid-column:1/-1}}
-.termina-mais>summary{cursor:pointer;font-size:.8rem;color:var(--text3);padding:8px 2px;list-style:none}
-.termina-mais>summary::-webkit-details-marker{display:none}
-.termina-falta{display:block;font-size:.7rem;color:var(--text3);text-align:right;margin-top:3px}
 .venc-tag{font-style:normal;margin-left:6px;color:var(--text3)}
 .venc-tag.perto{color:var(--amber)}.venc-tag.atrasada{color:var(--red)}
 .chip.st-atrasada{background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.3)}
 .edit-venc{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--text3)}
+.termina-total{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:6px;padding:10px 12px;border-radius:10px;background:var(--card2);border:1px solid var(--border);font-size:.84rem;color:var(--text2)}
+.termina-total b{color:var(--green);font-size:1.02rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .termina-tit{font-size:.74rem;color:var(--text3);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
 .imp-fixa{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text2);margin-top:4px;width:100%}
 .imp-fixas-falta{font-size:.78rem;color:var(--text2);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0}
@@ -1029,12 +1021,6 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
       <div class="kpi-delta" id="var-futuro"></div>
     </div>
 
-    <div class="card" id="card-termina">
-      <div class="card-label">Contas que vão terminar <span class="card-dica">parcelamentos e financiamentos</span></div>
-      <div class="termina-kpis" id="termina-kpis"></div>
-      <div class="settings-list" id="termina-lista"></div>
-    </div>
-
     <div class="card span-8">
       <div class="card-head">
         <div class="card-label">Evolução — gastos e receita</div>
@@ -1093,6 +1079,7 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
       </div>
       <div class="grafico" id="chart-futuro"></div>
       <div class="nota" id="nota-futuro"></div>
+      <div class="settings-list" id="lista-termina"></div>
     </div>
 
     <div class="card span-6">
@@ -2704,50 +2691,32 @@ function renderFuturo(chave,quem=null){
     : '';
 }
 
-/* ── CONTAS QUE VÃO TERMINAR ──
-   Cada compra parcelada (ou financiamento) que ainda tem parcela deste mês
-   em diante: quando termina, quanto libera por mês e quanto ainda falta.
-   Compra dividida conta uma vez só (as partes de quem está no filtro). */
-function contasQueTerminam(chave,quem=null){
+/* ── TERMINAM NESTE MÊS ──
+   Só compra parcelada (2x ou mais): termina quando a parcela é a última
+   (10/10, 3/3...) e cai no mês escolhido. À vista (1/1) e fixas não entram.
+   A soma é o que deixa de vir na fatura do mês seguinte.
+   Compra dividida aparece uma vez (as partes de quem está no filtro). */
+function terminamNoMes(chave,quem=null){
   const por={};
   S.lancamentos.forEach(l=>{
-    if(!(l.parcelas>1)||ehRecorrente(l)||(quem&&l.responsavel!==quem))return;
+    if(!(l.parcelas>=2)||l.parcelaAtual!==l.parcelas||l.mesChave!==chave||ehRecorrente(l)||(quem&&l.responsavel!==quem))return;
     const k=baseGrupo(l.grupoId)+'|'+semDiv(l.desc)+'|'+l.parcelas;
-    (por[k]=por[k]||[]).push(l);
+    const x=por[k]=por[k]||{desc:semDiv(l.desc),parcelas:l.parcelas,cartao:l.cartao,valor:0};
+    x.valor=r2(x.valor+l.valor);
   });
-  const lista=[];
-  Object.values(por).forEach(g=>{
-    const fim=g.reduce((m,l)=>l.mesChave>m?l.mesChave:m,'');
-    if(fim<chave)return;
-    const ult=Math.max(...g.map(l=>l.parcelaAtual));
-    const abertas=g.filter(l=>!l.pago&&l.mesChave>=chave);
-    if(!abertas.length)return;
-    lista.push({desc:semDiv(g[0].desc),fim,cartao:g[0].cartao,parcelas:g[0].parcelas,
-      mensal:r2(somaValores(g.filter(l=>l.parcelaAtual===ult))),
-      falta:r2(somaValores(abertas)),
-      restam:new Set(abertas.map(l=>l.parcelaAtual)).size});
-  });
-  return lista.sort((a,b)=>a.fim.localeCompare(b.fim)||b.mensal-a.mensal);
+  return Object.values(por).sort((a,b)=>b.valor-a.valor);
 }
 function renderTermina(chave,quem=null){
-  const lista=contasQueTerminam(chave,quem), card=$('card-termina');
-  card.hidden=!lista.length;
-  if(!lista.length){setHtml($('termina-kpis'),'');setHtml($('termina-lista'),'');return;}
-  const ate=n=>lista.filter(x=>x.fim<=chaveDesloc(chave,n-1));
-  const tile=(lab,itens,forte)=>`<div class="termina-kpi${forte&&itens.length?' forte':''}"><div class="kpi-lab">${lab}</div>
-    <b>${itens.length?fmt(r2(itens.reduce((s,x)=>s+x.mensal,0))):'—'}</b>
-    <small>${itens.length?`por mês a menos · ${itens.length} conta${itens.length>1?'s':''}`:'nenhuma termina'}</small></div>`;
-  const falta=r2(lista.reduce((s,x)=>s+x.falta,0));
-  setHtml($('termina-kpis'),tile('Até '+chaveCurta(chaveDesloc(chave,2)),ate(3),true)
-    +tile('Até '+chaveCurta(chaveDesloc(chave,5)),ate(6),false)
-    +`<div class="termina-kpi"><div class="kpi-lab">Falta pagar</div><b>${fmt(falta)}</b>
-      <small>em ${lista.length} parcelamento${lista.length>1?'s':''} · ${fmt(r2(lista.reduce((s,x)=>s+x.mensal,0)))}/mês hoje</small></div>`);
-  const linha=x=>`<div class="settings-item termina-item">
-      <div class="settings-item-info"><div class="settings-item-name">${esc(x.desc)}</div>
-      <div class="settings-item-sub">${x.fim===chave?'termina este mês':'última em '+esc(chaveExib(x.fim))} · falta${x.restam>1?'m':''} ${x.restam} de ${x.parcelas} · ${esc(x.cartao)}</div></div>
-      <div class="settings-item-actions" style="flex-direction:column;align-items:flex-end;gap:0"><span class="chip st-pago">${fmt(x.mensal)}/mês</span><span class="termina-falta">falta ${fmt(x.falta)}</span></div></div>`;
-  setHtml($('termina-lista'),lista.slice(0,5).map(linha).join('')
-    +(lista.length>5?`<details class="termina-mais"><summary>Ver todas (${lista.length})</summary>${lista.slice(5).map(linha).join('')}</details>`:''));
+  const lista=terminamNoMes(chave,quem), prox=chaveExib(chaveDesloc(chave,1)).split(/[\/ ]/)[0].toLowerCase();
+  const total=r2(lista.reduce((s,x)=>s+x.valor,0));
+  setHtml($('lista-termina'),`<div class="termina-tit">Terminam em ${esc(chaveExib(chave).split(/[\/ ]/)[0].toLowerCase())}</div>`+
+    (lista.length
+      ?lista.map(x=>`<div class="settings-item termina-item">
+          <div class="settings-item-info"><div class="settings-item-name">${esc(x.desc)}</div>
+          <div class="settings-item-sub">última parcela ${pad2(x.parcelas)}/${pad2(x.parcelas)} · ${esc(x.cartao)}</div></div>
+          <div class="settings-item-actions"><b style="font-variant-numeric:tabular-nums">${fmt(x.valor)}</b></div></div>`).join('')
+        +`<div class="termina-total"><span>Libera para ${esc(prox)}</span><b>${fmt(total)}</b></div>`
+      :'<div class="field-hint">Nenhuma parcela termina neste mês.</div>'));
 }
 
 /* ── EMPRÉSTIMOS (só você vê) ──

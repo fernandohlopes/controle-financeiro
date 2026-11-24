@@ -274,19 +274,20 @@ document.getElementById('app').addEventListener('load',()=>{
     no(`S.lancamentos=S.lancamentos.filter(l=>l.grupoId!=='vv');outbox=[];`);
     confere('fixa: dia do vencimento vai para a regra', no(`[recParaAPI({id:'r',cartao:'Sem cartão',mesInicio:'2026-11',diaVenc:10}).diaVenc,recParaAPI({id:'r',cartao:'Nubank',mesInicio:'2026-11',diaVenc:10}).diaVenc,mapRecFromAPI({id:'r',dia_vencimento:'12'}).diaVenc]`), [10,0,12]);
 
-    // contas que vão terminar
+    // terminam neste mês: só a última parcela (N/N) de compra em 2x ou mais
     no(`S.lancamentos.push(
-      ...[1,2,3,4].map(k=>({id:'t1'+k,desc:'Geladeira',mesChave:chaveDesloc('2026-10',k-1),valor:200,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:4,parcelaAtual:k,grupoId:'T1',pago:k===1})),
-      ...[1,2].map(k=>({id:'t2'+k,desc:'Cama (Div.)',mesChave:chaveDesloc('2026-11',k-1),valor:50,responsavel:'Fernando Lopes',cartao:'Sem cartão',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T2-1',pago:false})),
-      ...[1,2].map(k=>({id:'t3'+k,desc:'Cama (Div.)',mesChave:chaveDesloc('2026-11',k-1),valor:50,responsavel:'Cindhy Medeiros',cartao:'Sem cartão',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T2-2',pago:false})),
-      ...[1,2].map(k=>({id:'t4'+k,desc:'Velha',mesChave:chaveDesloc('2026-08',k-1),valor:10,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T4',pago:true})));`);
-    confere('terminam: quando, quanto por mês e quanto falta (dividida conta uma vez)',
-      no(`contasQueTerminam('2026-11').filter(x=>['Geladeira','Cama','Velha'].includes(x.desc)).map(x=>[x.desc,x.fim,x.mensal,x.falta,x.restam])`),
-      [['Cama','2026-12',100,200,2],['Geladeira','2027-01',200,600,3]]);
-    confere('terminam: filtro de pessoa', no(`contasQueTerminam('2026-11','Cindhy Medeiros').filter(x=>x.desc==='Cama').map(x=>x.mensal)`), [50]);
-    no(`renderTermina('2026-11')`);
-    confere('terminam: card mostra os totais', no(`[$('card-termina').hidden,$('termina-kpis').textContent.includes('Falta pagar'),$('termina-lista').textContent.includes('Geladeira')]`), [false,true,true]);
-    no(`S.lancamentos=S.lancamentos.filter(l=>!/^t[1-4]/.test(l.id));`);
+      ...[1,2,3,4].map(k=>({id:'t1'+k,desc:'Geladeira',mesChave:chaveDesloc('2026-08',k-1),valor:200,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:4,parcelaAtual:k,grupoId:'T1',pago:false})),
+      ...[1,2].map(k=>({id:'t2'+k,desc:'Cama (Div.)',mesChave:chaveDesloc('2026-10',k-1),valor:50,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T2-1',pago:false})),
+      ...[1,2].map(k=>({id:'t3'+k,desc:'Cama (Div.)',mesChave:chaveDesloc('2026-10',k-1),valor:50,responsavel:'Cindhy Medeiros',cartao:'Nubank',categoria:'Casa',parcelas:2,parcelaAtual:k,grupoId:'T2-2',pago:false})),
+      {id:'t41',desc:'Pizza',mesChave:'2026-11',valor:80,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:1,parcelaAtual:1,grupoId:'T4',pago:false},
+      ...[1,2,3].map(k=>({id:'t5'+k,desc:'Tênis',mesChave:chaveDesloc('2026-10',k-1),valor:70,responsavel:'Fernando Lopes',cartao:'Nubank',categoria:'Casa',parcelas:3,parcelaAtual:k,grupoId:'T5',pago:false})));`);
+    confere('terminam no mês: só N/N de 2x ou mais (dividida uma vez, à vista fora)',
+      no(`terminamNoMes('2026-11').filter(x=>['Geladeira','Cama','Pizza','Tênis'].includes(x.desc)).map(x=>[x.desc,x.valor])`),
+      [['Geladeira',200],['Cama',100]]);
+    confere('terminam no mês: filtro de pessoa', no(`terminamNoMes('2026-11','Cindhy Medeiros').filter(x=>x.desc==='Cama').map(x=>x.valor)`), [50]);
+    no(`const s0=S.lancamentos;S.lancamentos=s0.filter(l=>/^t[1-5]/.test(l.id));renderTermina('2026-11');window.__t=$('lista-termina').textContent;S.lancamentos=s0;`);
+    confere('terminam no mês: total que libera em dezembro', no(`[__t.includes('Terminam em novembro'),__t.includes('Libera para dezembro'),__t.includes(fmt(300))]`), [true,true,true]);
+    no(`S.lancamentos=S.lancamentos.filter(l=>!/^t[1-5]/.test(l.id));`);
 
     // fila offline: criar e apagar antes de enviar não manda nada
     no(`outbox=[];enfileirar('addLancamentos',{itens:[{id:'z1'},{id:'z2'}]});enfileirar('deleteLancamentos',{ids:['z1']});`);
