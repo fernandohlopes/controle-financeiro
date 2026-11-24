@@ -165,6 +165,10 @@ document.getElementById('app').addEventListener('load',()=>{
     confere('importar: mesa e sofá não duplicou', no(`S.lancamentos.filter(l=>l.grupoId==='ms').length`), 2);
     confere('importar: segunda vez é tudo "já lançado"', no(`lerImportacao(['#FATURA Hipercard 2026-12','Netflix.com | 46,90 | Eletrônicos | Fernando','Drogaria Raia | 35,00 | Saúde | Fernando'].join('\\n')).itens.map(i=>i.status)`), ['igual','igual']);
     confere('importar: mesmo valor, nome diferente = dúvida', no(`lerImportacao('#FATURA Hipercard 2026-12\\nPAG*XYZ | 35,00 | Saúde').itens[0].status`), 'duvida');
+    confere('importar: fatura inteira, mesmo nome e outro valor = corrigir', no(`lerImportacao('#FATURA Hipercard 2026-12\\nDrogaria Raia | 50,00 | Saúde').itens[0].status`), 'corrigir');
+    confere('importar: só os últimos, mesmo nome e outro valor = nova compra', no(`(()=>{const i=lerImportacao('#FATURA Hipercard 2026-12\\nDrogaria Raia | 50,00 | Saúde',true).itens[0];return [i.status,i.parecido&&i.parecido.desc]})()`), ['novo','Drogaria Raia']);
+    confere('importar: só os últimos, o que já está lançado igual fica de fora', no(`lerImportacao('#FATURA Hipercard 2026-12\\nDrogaria Raia | 35,00 | Saúde\\nPosto Shell | 123,47 | Saúde',true).itens.map(i=>i.status)`), ['igual','novo']);
+    confere('importar: "#FATURA ... ULTIMOS" liga o modo sozinho', no(`(()=>{const r=lerImportacao('#FATURA Hipercard 2026-12 ULTIMOS\\nDrogaria Raia | 50,00 | Saúde');return [r.parcialNoTexto,r.itens[0].status]})()`), [true,'novo']);
     no(`S.lancamentos.push(
       {id:'sp1',desc:'Spotify',mesChave:'2027-01',valor:20.45,responsavel:'Fernando Lopes',cartao:'Hipercard',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'sp1',pago:false},
       {id:'sp2',desc:'Spotify',mesChave:'2027-01',valor:20.45,responsavel:'Cintia Muniz',cartao:'Hipercard',categoria:'Lanches',parcelas:1,parcelaAtual:1,grupoId:'sp2',pago:false},

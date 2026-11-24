@@ -43,6 +43,17 @@ pronta para o app. Funciona no celular (app do Claude) e no computador
 5. Confira: **Novo**, **✓ Já lançado** (fica de fora), **Corrigir valor**,
    **Parece…** (você escolhe "É o mesmo" ou "É outro"). Toque em **Salvar**.
 
+### Só os últimos lançamentos (Sicredi e outros por print)
+
+Já lançou parte da fatura e quer mandar só as compras novas? Mande só os
+prints novos e escreva **"só os últimos"** na conversa. O Claude põe
+`ULTIMOS` no fim da linha `#FATURA`, e o app marca sozinho **Só os últimos
+lançamentos** (dá para marcar na mão também, em Importar fatura).
+
+Nesse modo, o que já está lançado igual fica de fora (pode repetir print
+sem medo) e uma compra no mesmo lugar com outro valor entra como **nova**,
+em vez de corrigir a antiga.
+
 ---
 
 ## Texto para "Instruções do projeto"
@@ -73,6 +84,7 @@ Regras das linhas:
 - Juros, IOF, anuidade e encargos entram como compras normais (categoria Empréstimos, ou a mais próxima).
 - Pagamentos da fatura, estornos, créditos, saldo anterior e totais NÃO entram como linha. Se houver, coloque como comentário começando com # (ex.: # estorno Uber -12,00).
 - Se forem várias faturas, repita o bloco #FATURA para cada uma, dentro do mesmo bloco de código.
+- Se eu disser que são só os últimos lançamentos (prints novos de uma fatura que já comecei a lançar), escreva a primeira linha assim: #FATURA <cartão> <AAAA-MM das compras> ULTIMOS. Nesse caso a soma não precisa bater com o total da fatura.
 
 4. Depois do bloco, no máximo 3 linhas:
 - a soma das linhas e se bate com o total da fatura (se não bater, diga a diferença e o motivo provável, como estornos);

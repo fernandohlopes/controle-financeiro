@@ -627,6 +627,9 @@ details.filtros-box[open]>summary::after{content:'−'}
 .imp-st.corrigir{color:var(--amber);background:rgba(251,191,36,.1)}
 .imp-st.duvida{color:var(--gold2);background:var(--gold-dim)}
 .imp-obs{color:var(--text3)}
+.imp-modo{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:.8rem;color:var(--text2);margin:10px 0 2px}
+.imp-modo>span{color:var(--text3)}
+.imp-modo label{display:flex;align-items:center;gap:6px;cursor:pointer}
 .imp-escolha{display:inline-flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
 .imp-escolha button{font:inherit;font-size:.72rem;background:none;border:none;color:var(--text2);padding:4px 9px;cursor:pointer}
 .imp-escolha button.on{background:var(--gold-dim);color:var(--gold2);font-weight:600}
@@ -1119,9 +1122,14 @@ details.mais>summary,details.filtros-box>summary,details.edit-div>summary{text-t
         <button class="btn btn-ghost btn-sm" id="imp-colar">Colar</button>
         <button class="btn btn-ghost btn-sm" id="imp-ler">Ler</button>
       </div>
+      <div class="imp-modo" role="radiogroup" aria-label="O que você colou">
+        <span>O que você colou:</span>
+        <label><input type="radio" name="imp-modo" value="inteira" checked> A fatura inteira</label>
+        <label><input type="radio" name="imp-modo" value="parcial"> Só os últimos lançamentos</label>
+      </div>
       <div id="imp-resultado" aria-live="polite"></div>
       <button class="btn btn-success btn-full" id="imp-salvar" disabled>Salvar importação</button>
-      <div class="field-hint">Compras já lançadas (mesmo cartão, mês e parcela) ficam de fora; se o valor mudou, ele é corrigido. Nada é gravado antes de Salvar.</div>
+      <div class="field-hint" id="imp-rodape">Compras já lançadas (mesmo cartão, mês e parcela) ficam de fora; se o valor mudou, ele é corrigido. Nada é gravado antes de Salvar.</div>
     </div>
   </details>
   <div class="card">
@@ -1513,7 +1521,7 @@ const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxLksz1p96gEEAoTQ
 const TIMEOUT_MS=60000;
 const K={sessao:'cf_sessao',usuario:'cf_usuario',manter:'cf_manter',principal:'cf_pessoa_principal',
   cache:'cf_cache',outbox:'cf_outbox',preparo:'cf_preparo',iosDica:'cf_ios_dica',ultCartao:'cf_ultimo_cartao',
-  filtroPessoa:'cf_filtro_pessoa'};
+  filtroPessoa:'cf_filtro_pessoa',impParcial:'cf_imp_parcial'};
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 const S={lancamentos:[],receitas:{},pessoas:[],categorias:[],cartoes:[],recorrentes:[],acertos:[],emprestimos:[],servidorV:1,atualizadoEm:null};
@@ -3455,13 +3463,14 @@ function nomesParecidos(a,b){
   const comuns=ta.filter(w=>tb.some(x=>x===w||(w.length>=5&&x.length>=5&&(x.startsWith(w)||w.startsWith(x))))).length;
   return comuns>=Math.min(2,ta.length,tb.length);
 }
-function lerImportacao(texto){
-  const itens=[],avisos=[];let cartao=null,mes=null;
+function lerImportacao(texto,parcial=false){
+  const itens=[],avisos=[];let cartao=null,mes=null,parcialNoTexto=false;
   String(texto||'').split(/\r?\n/).forEach((bruta,num)=>{
     const ln=bruta.trim();
     if(!ln||ln.startsWith('```'))return;
-    const h=ln.match(/^#\s*FATURA\s+(.+?)\s+(\d{4})-(\d{1,2})\s*$/i);
+    const h=ln.match(/^#\s*FATURA\s+(.+?)\s+(\d{4})-(\d{1,2})(?:\s+(parcial|[uú]ltimos|ultimos|novos))?\s*$/i);
     if(h){
+      if(h[4])parcialNoTexto=true;
       cartao=acharCartaoNome(h[1]);mes=`${h[2]}-${pad2(+h[3])}`;
       if(!cartao)avisos.push(`Linha ${num+1}: cartão "${h[1]}" não está cadastrado.`);
       return;
@@ -3489,11 +3498,11 @@ function lerImportacao(texto){
     it.cartao=cartao;it.mesChave=mes;it.linha=num+1;
     itens.push(it);
   });
-  classificarImportacao(itens);
-  return{itens,avisos};
+  classificarImportacao(itens,parcial||parcialNoTexto);
+  return{itens,avisos,parcialNoTexto};
 }
 /* compara com o que já existe; cada lançamento existente só "casa" uma vez */
-function classificarImportacao(itens){
+function classificarImportacao(itens,parcial=false){
   /* Ordem da conferência (cada lançamento existente casa uma vez só):
      1) mesmo nome e mesmo valor → já lançado (primeiro todos estes, para que
         dois itens parecidos, como 119,90 e 119,89, peguem cada um o seu);
@@ -3502,7 +3511,10 @@ function classificarImportacao(itens){
      4) parcela igual (x/N), nome diferente: um só com o mesmo valor → já
         lançado; um só candidato com valor perto (até 10%) → corrigir;
      5) mesmo valor, nome diferente (até com outro N) → dúvida;
-     6) senão, novo. */
+     6) senão, novo.
+     Só os últimos lançamentos (print novo de uma fatura já começada): as
+     compras antigas não vêm na lista, então "mesmo nome, outro valor" é
+     outra compra no mesmo lugar (posto, mercado) → novo, não corrigir. */
   const usados=new Set();
   const livre=g=>g.itens.every(l=>!usados.has(l.id));
   const marca=g=>g.itens.forEach(l=>usados.add(l.id));
@@ -3520,7 +3532,7 @@ function classificarImportacao(itens){
     it.incluir=status==='corrigir';
     if(status==='duvida')it.ehOutro=false;
   };
-  itens.forEach(it=>{it.status=null;it.alvo=null;it.outroNome=false;it.ajustaN=false;});
+  itens.forEach(it=>{it.status=null;it.alvo=null;it.outroNome=false;it.ajustaN=false;it.parecido=null;});
   // 1) nome e valor iguais
   itens.forEach(it=>{
     const g=candidatos(it).find(g=>nomesParecidos(it.desc,g.desc)&&quase(g.total,it.valor));
@@ -3534,7 +3546,8 @@ function classificarImportacao(itens){
       define(it,'igual',{itens:porNome.flatMap(g=>g.itens),desc:porNome[0].desc,total:it.valor});return;
     }
     // 3) mesmo nome, outro valor
-    if(porNome.length){define(it,'corrigir',porNome[0]);return;}
+    if(porNome.length&&!parcial){define(it,'corrigir',porNome[0]);return;}
+    if(porNome.length){it.status='novo';it.incluir=!!it.categoria;it.parecido=porNome[0];return;}
     // 4) mesma parcela, um só candidato
     if(it.parcelas>1){
       const mesmoValorParc=lista.filter(g=>quase(g.total,it.valor));
@@ -3566,10 +3579,23 @@ function faltamFixas(itens){
   const nomesF=[...new Set(faltam.map(l=>semDiv(l.desc)))];
   return `<div class="imp-fixas-falta">Fixas que ainda não apareceram nesta fatura: <b>${nomesF.map(esc).join(', ')}</b>. Se cobram mais para o fim do mês, é normal; elas continuam lançadas.</div>`;
 }
+let impParcial=store.get(K.impParcial)==='1';
+function mostrarModoImportacao(){
+  const r=document.querySelector(`input[name="imp-modo"][value="${impParcial?'parcial':'inteira'}"]`);if(r)r.checked=true;
+  $('imp-rodape').textContent=impParcial
+    ?'Só os últimos: o que já está lançado igual fica de fora; compra no mesmo lugar com outro valor entra como nova. Nada é gravado antes de Salvar.'
+    :'Compras já lançadas (mesmo cartão, mês e parcela) ficam de fora; se o valor mudou, ele é corrigido. Nada é gravado antes de Salvar.';
+}
+function mudarModoImportacao(v){
+  impParcial=v==='parcial';store.set(K.impParcial,impParcial?'1':'0');mostrarModoImportacao();
+  if(importacao){classificarImportacao(importacao.itens,impParcial);renderImportacao();}
+}
 function lerImportacaoUI(){
   const txt=$('imp-texto').value;
   if(!txt.trim()){setHtml($('imp-resultado'),'');importacao=null;atualizarBotaoImportar();return;}
-  importacao=lerImportacao(txt);
+  importacao=lerImportacao(txt,impParcial);
+  if(importacao.parcialNoTexto&&!impParcial){impParcial=true;store.set(K.impParcial,'1');}
+  mostrarModoImportacao();
   setHtml($('imp-resultado'),''); // lista nova começa do topo
   renderImportacao();
 }
@@ -3591,7 +3617,7 @@ function renderImportacao(){
     const parc=it.parcelas>1?` <span class="tag">${pad2(it.parcelaAtual)}/${pad2(it.parcelas)}</span>`:'';
     const quem=it.pessoas.map(primeiroNome).join(' + ');
     let st='';
-    if(it.status==='novo')st=`<span class="imp-st novo">Novo</span>${it.parcelas>1&&it.parcelaAtual<it.parcelas?` <span class="imp-obs">cria até ${pad2(it.parcelas)}/${pad2(it.parcelas)}</span>`:''}`;
+    if(it.status==='novo')st=`<span class="imp-st novo">Novo</span>${it.parcelas>1&&it.parcelaAtual<it.parcelas?` <span class="imp-obs">cria até ${pad2(it.parcelas)}/${pad2(it.parcelas)}</span>`:''}${it.parecido?` <span class="imp-obs">já tem "${esc(it.parecido.desc)}" de ${fmt(it.parecido.total)} neste mês: entra como outra compra</span>`:''}`;
     const comoNome=it.outroNome?` <span class="imp-obs">como "${esc(it.alvo.desc)}"</span>`:'';
     // cobrança fixa com preço novo: oferece levar o valor para os próximos meses
     const regra=it.status==='corrigir'&&it.alvo.itens.length===1?regraDe(it.alvo.itens[0]):null;
@@ -3619,7 +3645,7 @@ function renderImportacao(){
   const listaAntes=el.querySelector('.imp-lista'), rolLista=listaAntes?listaAntes.scrollTop:0, rolPag=window.scrollY;
   setHtml(el,(itens.length?`<div class="imp-cab"><b>${esc(fatura)}</b><span>${cont.novo} novo(s) · ${cont.igual} já lançado(s) · ${cont.corrigir} a corrigir${cont.duvida?` · ${cont.duvida} para decidir`:''}</span></div>`:'')+
     (avisos.length?`<div class="imp-avisos">${avisos.map(a=>`<div>⚠ ${esc(a)}</div>`).join('')}</div>`:'')+
-    faltamFixas(itens)+
+    (impParcial?'':faltamFixas(itens))+
     `<div class="imp-lista">${linhas}</div>`);
   const listaDepois=el.querySelector('.imp-lista');if(listaDepois)listaDepois.scrollTop=rolLista;
   if(Math.abs(window.scrollY-rolPag)>1)window.scrollTo(0,rolPag);
@@ -4938,6 +4964,8 @@ on('imp-ler','click',lerImportacaoUI);
 on('imp-colar','click',colarImportacao);
 on('imp-arquivo','change',e=>{abrirArquivoImportacao(e.target.files[0]);e.target.value='';});
 on('imp-salvar','click',salvarImportacao);
+document.querySelectorAll('input[name="imp-modo"]').forEach(r=>r.addEventListener('change',e=>mudarModoImportacao(e.target.value)));
+mostrarModoImportacao();
 on('imp-texto','input',()=>{clearTimeout(window.__impT);window.__impT=setTimeout(lerImportacaoUI,350);});
 on('imp-resultado','change',e=>{
   const i=+e.target.dataset.i;if(!importacao||isNaN(i))return;const it=importacao.itens[i];
